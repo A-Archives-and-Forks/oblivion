@@ -40,6 +40,7 @@ val ndkRelease = (project.findProperty("ndkVersion") as String?)
 android {
     namespace = "org.bepass.oblivion.vpn"
     compileSdk = 37
+    compileSdkMinor = 0
     ndkVersion = ndkRelease
 
     compileOptions {

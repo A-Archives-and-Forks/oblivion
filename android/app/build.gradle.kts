@@ -18,6 +18,7 @@ val hasReleaseKey = signingProperties.getProperty("storeFile") != null
 android {
     namespace = "org.bepass.oblivion"
     compileSdk = 37
+    compileSdkMinor = 0
     ndkVersion = "28.2.13676358"
 
     compileOptions {
