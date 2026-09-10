@@ -223,7 +223,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config make gcc \
-            libgtk-3-dev liblzma-dev libayatana-appindicator3-dev
+            libgtk-3-dev liblzma-dev libayatana-appindicator3-dev patchelf \
+            libayatana-appindicator3-1 libayatana-indicator3-7 \
+            libayatana-ido3-0.4-0 libdbusmenu-glib4 libdbusmenu-gtk3-4
 
       - name: Set up Flutter
         if: matrix.arch == 'x64'
@@ -261,6 +263,11 @@ jobs:
         run: |
           flutter pub get
           flutter build linux --release
+
+      - name: Carry the libraries other distros do not ship
+        run: |
+          tools/bundle-linux-libs.sh \
+            "build/linux/${{ matrix.arch }}/release/bundle"
 
       - name: Check that tunnel mode is embedded
         run: |
