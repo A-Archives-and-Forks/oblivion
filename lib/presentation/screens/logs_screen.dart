@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,7 +21,10 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
   static const int _maxLines = 600;
 
   final List<String> _lines = <String>[];
+  final List<String> _incoming = <String>[];
   final ScrollController _scroll = ScrollController();
+
+  Timer? _flush;
 
   @override
   void initState() {
@@ -40,8 +45,32 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
 
   @override
   void dispose() {
+    _flush?.cancel();
     _scroll.dispose();
     super.dispose();
+  }
+
+  void _queue(String line) {
+    _incoming.add(line);
+    _flush ??= Timer(const Duration(milliseconds: 120), () {
+      _flush = null;
+      if (!mounted || _incoming.isEmpty) return;
+
+      setState(() {
+        for (final pending in _incoming) {
+          _append(pending);
+        }
+        _incoming.clear();
+      });
+    });
+  }
+
+  Future<void> _clear() async {
+    _flush?.cancel();
+    _flush = null;
+    _incoming.clear();
+    setState(_lines.clear);
+    await ref.read(tunnelChannelProvider).clearLogs();
   }
 
   void _append(String line) {
@@ -67,7 +96,7 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
     ref.listen<AsyncValue<String>>(tunnelLogsProvider, (previous, next) {
       final line = next.valueOrNull;
       if (line == null) return;
-      setState(() => _append(line));
+      _queue(line);
     });
 
     final body = _lines.isEmpty
@@ -98,7 +127,7 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
                   ? null
                   : IconButtonPlain(
                       icon: CupertinoIcons.trash,
-                      onTap: () => setState(_lines.clear),
+                      onTap: _clear,
                     ),
             ),
             Expanded(child: body),

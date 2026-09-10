@@ -13,20 +13,23 @@ class InstalledApp {
     required this.packageName,
     required this.label,
     required this.isSystem,
-    this.icon,
   });
 
   final String packageName;
   final String label;
   final bool isSystem;
-  final Uint8List? icon;
 
-  factory InstalledApp.fromMap(Map<dynamic, dynamic> map) => InstalledApp(
-    packageName: map['packageName'] as String,
-    label: (map['label'] as String?) ?? map['packageName'] as String,
-    isSystem: (map['isSystem'] as bool?) ?? false,
-    icon: map['icon'] as Uint8List?,
-  );
+  static InstalledApp? tryFromMap(Map<dynamic, dynamic> map) {
+    final packageName = map['packageName'];
+    if (packageName is! String || packageName.isEmpty) return null;
+
+    final label = map['label'];
+    return InstalledApp(
+      packageName: packageName,
+      label: label is String && label.isNotEmpty ? label : packageName,
+      isSystem: map['isSystem'] as bool? ?? false,
+    );
+  }
 }
 
 class TunnelChannel {
@@ -192,9 +195,17 @@ class TunnelChannel {
       return TunnelCapability(
         embedded: backend.tunnelDeviceAvailable,
         privileged: backend.isPrivileged,
+        conduit: backend.supportsConduit,
       );
     }
-    return const TunnelCapability(embedded: true, privileged: true);
+
+    final raw = await _methods.invokeMethod<Map<dynamic, dynamic>>(
+      'capabilities',
+    );
+    if (raw == null) {
+      return const TunnelCapability(embedded: true, privileged: true);
+    }
+    return TunnelCapability.fromMap(raw);
   }
 
   Future<bool> submitLoginCode(String code) async {
@@ -227,6 +238,16 @@ class TunnelChannel {
       <String, dynamic>{'includeSystem': includeSystem},
     );
     if (raw == null) return const <InstalledApp>[];
-    return raw.map(InstalledApp.fromMap).toList();
+
+    return <InstalledApp>[
+      for (final entry in raw) ?InstalledApp.tryFromMap(entry),
+    ];
+  }
+
+  Future<Uint8List?> appIcon(String packageName) async {
+    if (!_usesNativeChannels) return null;
+    return _methods.invokeMethod<Uint8List>('appIcon', <String, dynamic>{
+      'packageName': packageName,
+    });
   }
 }

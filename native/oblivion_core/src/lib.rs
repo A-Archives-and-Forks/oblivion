@@ -143,6 +143,15 @@ pub extern "C" fn oblivion_tunnel_available() -> i32 {
 }
 
 #[no_mangle]
+pub extern "C" fn oblivion_supports_conduit() -> i32 {
+    if psiphon::supports_inproxy() {
+        1
+    } else {
+        0
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn oblivion_is_privileged() -> i32 {
     if net::is_privileged() {
         1

@@ -7,6 +7,8 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     private static let tunIpv4 = "198.18.0.1"
     private static let tunIpv6 = "fc00::1"
     private static let tunMtu = 8500
+    private static let tunMtuRange = 1280...9000
+    private static let coreMtuRange = 576...1500
 
     private var core: AetherCoreBridge?
     private var hevThread: Thread?
@@ -17,6 +19,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         let socksPort = (settings["socksPort"] as? NSNumber)?.intValue ?? 1819
         let proxyOnly = (settings["proxyOnly"] as? NSNumber)?.boolValue ?? false
         let coreArguments = settings["coreArguments"] as? [String] ?? []
+        let mtu = Self.tunnelMtu(settings)
 
         TunnelLogStore.shared.append("aether", "[*] starting the aether core")
 
@@ -34,8 +37,12 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             return
         }
 
-        try await applyTunnelSettings(socksPort: socksPort)
-        startHev(socksPort: socksPort, logLevel: settings["logLevel"] as? String ?? "info")
+        try await applyTunnelSettings(socksPort: socksPort, mtu: mtu)
+        startHev(
+            socksPort: socksPort,
+            mtu: mtu,
+            logLevel: settings["logLevel"] as? String ?? "info"
+        )
         TunnelLogStore.shared.append("aether", "[+] tun interface up, routing into 127.0.0.1:\(socksPort)")
     }
 
@@ -99,6 +106,10 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             }
         }
 
+        if protocolName == "masque", let mtu = Self.coreMtu(settings) {
+            environment["AETHER_MASQUE_MTU"] = String(mtu)
+        }
+
         if let endpoint = settings["endpoint"] as? String, !endpoint.isEmpty {
             environment["AETHER_PEER"] = endpoint
         }
@@ -120,11 +131,24 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         throw TunnelError.validationTimeout
     }
 
-    private func applyTunnelSettings(socksPort: Int) async throws {
+    private static func tunnelMtu(_ settings: [String: Any]) -> Int {
+        let raw = (settings["tunnelMtu"] as? NSNumber)?.intValue ?? tunMtu
+        return min(max(raw, tunMtuRange.lowerBound), tunMtuRange.upperBound)
+    }
+
+    private static func coreMtu(_ settings: [String: Any]) -> Int? {
+        let candidates = [
+            (settings["coreMtu"] as? NSNumber)?.intValue ?? 0,
+            (settings["tunnelMtu"] as? NSNumber)?.intValue ?? 0,
+        ]
+        return candidates.first { coreMtuRange.contains($0) }
+    }
+
+    private func applyTunnelSettings(socksPort: Int, mtu: Int) async throws {
         let settings = NEPacketTunnelNetworkSettings(
             tunnelRemoteAddress: Self.tunIpv4
         )
-        settings.mtu = NSNumber(value: Self.tunMtu)
+        settings.mtu = NSNumber(value: mtu)
 
         let ipv4 = NEIPv4Settings(addresses: [Self.tunIpv4], subnetMasks: ["255.255.255.252"])
         ipv4.includedRoutes = [NEIPv4Route.default()]
@@ -141,10 +165,10 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         try await setTunnelNetworkSettings(settings)
     }
 
-    private func startHev(socksPort: Int, logLevel: String) {
+    private func startHev(socksPort: Int, mtu: Int, logLevel: String) {
         let config = """
         tunnel:
-          mtu: \(Self.tunMtu)
+          mtu: \(mtu)
         socks5:
           port: \(socksPort)
           address: 127.0.0.1
@@ -182,10 +206,9 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
     private func hevLogLevel(_ level: String) -> String {
         switch level {
-        case "trace", "debug": return "debug"
-        case "info": return "info"
-        case "warn": return "warn"
-        default: return "error"
+        case "trace": return "debug"
+        case "debug": return "info"
+        default: return "warn"
         }
     }
 

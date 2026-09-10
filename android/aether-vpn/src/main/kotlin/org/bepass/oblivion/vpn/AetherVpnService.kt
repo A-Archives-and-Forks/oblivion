@@ -15,6 +15,8 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import java.io.File
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 
@@ -30,6 +32,8 @@ class AetherVpnService : VpnService() {
     private var hevLogTail: ScheduledExecutorService? = null
 
     private val control = Executors.newSingleThreadExecutor()
+    private val stopping = AtomicBoolean(false)
+    private val latestStartId = AtomicInteger(0)
 
     private var connectedAtMillis = 0L
 
@@ -40,16 +44,23 @@ class AetherVpnService : VpnService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        latestStartId.set(startId)
+
         when (intent?.action) {
             ACTION_START -> {
                 val payload = intent.getBundleExtra(EXTRA_CONFIG)
                 if (payload == null) {
-                    stopTunnel(TunnelStage.FAILED, "missing tunnel configuration")
+                    startForegroundNotification(TunnelStage.CONNECTING)
+                    requestStop(TunnelStage.FAILED, "missing tunnel configuration")
                     return START_NOT_STICKY
                 }
-                startTunnel(TunnelBundle.decode(payload))
+
+                val target = TunnelBundle.decode(payload)
+                publish(TunnelStage.CONNECTING, null)
+                startForegroundNotification(TunnelStage.CONNECTING)
+                control.execute { startTunnel(target) }
             }
-            ACTION_STOP -> stopTunnel(TunnelStage.DISCONNECTED, null)
+            ACTION_STOP -> requestStop(TunnelStage.DISCONNECTED, null)
             else -> {
                 stopForegroundCompat()
                 stopSelf()
@@ -60,12 +71,12 @@ class AetherVpnService : VpnService() {
 
     override fun onRevoke() {
         TunnelBus.log(logSource(), "[-] vpn permission revoked by the system")
-        stopTunnel(TunnelStage.DISCONNECTED, "revoked")
+        requestStop(TunnelStage.DISCONNECTED, "revoked")
         super.onRevoke()
     }
 
     override fun onDestroy() {
-        teardown()
+        control.execute { teardown() }
         control.shutdown()
         TunnelBus.unbindService(this)
         super.onDestroy()
@@ -73,11 +84,9 @@ class AetherVpnService : VpnService() {
 
     private fun startTunnel(target: TunnelConfig) {
         teardown()
+        stopping.set(false)
         config = target
         connectedAtMillis = 0L
-
-        publish(TunnelStage.CONNECTING, null)
-        startForegroundNotification(TunnelStage.CONNECTING)
 
         if (target.psiphonOnly) {
             startPsiphonTunnel(target)
@@ -92,7 +101,7 @@ class AetherVpnService : VpnService() {
             onLog = { line -> TunnelBus.log(line) },
             onExit = { code ->
                 if (code != 0) {
-                    stopTunnel(TunnelStage.FAILED, "core exited with code $code")
+                    requestStop(TunnelStage.FAILED, "core exited with code $code")
                 }
             },
         )
@@ -121,12 +130,10 @@ class AetherVpnService : VpnService() {
             configJson = configJson,
             onLog = { line -> TunnelBus.log(line) },
             onStopped = { reason ->
-                control.execute {
-                    stopTunnel(
-                        TunnelStage.FAILED,
-                        reason ?: "the psiphon core stopped before the tunnel came up",
-                    )
-                }
+                requestStop(
+                    TunnelStage.FAILED,
+                    reason ?: "the psiphon core stopped before the tunnel came up",
+                )
             },
         )
         psiphon = psiphonRunner
@@ -151,6 +158,9 @@ class AetherVpnService : VpnService() {
         if (target.protocol == "masque" && target.transport == "h2") {
             environment["AETHER_MASQUE_HTTP2"] = "1"
             if (target.fragment) environment["AETHER_MASQUE_H2_FRAGMENT"] = "1"
+        }
+        if (target.protocol == "masque" && target.innerMtu > 0) {
+            environment["AETHER_MASQUE_MTU"] = target.innerMtu.toString()
         }
         if (target.usesGool) {
             if (target.wiwOuterPeer.isNotEmpty()) {
@@ -225,12 +235,12 @@ class AetherVpnService : VpnService() {
 
         scheduler.scheduleWithFixedDelay({
             if (!activeCoreIsRunning()) {
-                stopTunnel(TunnelStage.FAILED, "the core stopped before the tunnel came up")
+                requestStop(TunnelStage.FAILED, "the core stopped before the tunnel came up")
                 return@scheduleWithFixedDelay
             }
 
             if (System.currentTimeMillis() > deadline) {
-                stopTunnel(
+                requestStop(
                     TunnelStage.FAILED,
                     if (usesPsiphon) {
                         "no working tunnel after ${budgetSeconds}s"
@@ -271,7 +281,7 @@ class AetherVpnService : VpnService() {
             } else if (establishTun(target)) {
                 onTunnelReady(target)
             } else {
-                stopTunnel(TunnelStage.FAILED, "failed to establish the tun interface")
+                requestStop(TunnelStage.FAILED, "failed to establish the tun interface")
             }
         }, 0, VALIDATION_INTERVAL_MS, TimeUnit.MILLISECONDS)
     }
@@ -300,17 +310,11 @@ class AetherVpnService : VpnService() {
             runCatching { builder.addDnsServer(resolver) }
         }
 
-        runCatching { builder.addDisallowedApplication(packageName) }
-
-        if (target.bypassSelected) {
-            for (bypassed in target.bypassedApps) {
-                if (bypassed == packageName) continue
-                try {
-                    builder.addDisallowedApplication(bypassed)
-                } catch (_: PackageManager.NameNotFoundException) {
-                    TunnelBus.log(logSource(), "[-] split tunnel skipped missing package $bypassed")
-                }
-            }
+        if (target.allowSelected) {
+            if (!applyAllowList(builder, target)) return false
+        } else {
+            runCatching { builder.addDisallowedApplication(packageName) }
+            if (target.bypassSelected) applyBypassList(builder, target)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -349,6 +353,45 @@ class AetherVpnService : VpnService() {
         return true
     }
 
+    private fun applyBypassList(builder: Builder, target: TunnelConfig): Boolean {
+        var kept = 0
+        for (bypassed in target.bypassedApps) {
+            if (bypassed == packageName) continue
+            try {
+                builder.addDisallowedApplication(bypassed)
+                kept++
+            } catch (_: PackageManager.NameNotFoundException) {
+                TunnelBus.log(logSource(), "[-] split tunnel skipped missing package $bypassed")
+            }
+        }
+        TunnelBus.log(logSource(), "[+] split tunnel: $kept apps stay off the tunnel")
+        return true
+    }
+
+    private fun applyAllowList(builder: Builder, target: TunnelConfig): Boolean {
+        var kept = 0
+        for (allowed in target.bypassedApps) {
+            if (allowed == packageName) continue
+            try {
+                builder.addAllowedApplication(allowed)
+                kept++
+            } catch (_: PackageManager.NameNotFoundException) {
+                TunnelBus.log(logSource(), "[-] split tunnel skipped missing package $allowed")
+            }
+        }
+
+        if (kept == 0) {
+            requestStop(
+                TunnelStage.FAILED,
+                "split tunnel is set to carry only the apps you pick, but none of them are installed",
+            )
+            return false
+        }
+
+        TunnelBus.log(logSource(), "[+] split tunnel: only $kept apps go through the tunnel")
+        return true
+    }
+
     private fun startHevLogTail(target: File) {
         val scheduler = Executors.newSingleThreadScheduledExecutor()
         hevLogTail = scheduler
@@ -365,10 +408,21 @@ class AetherVpnService : VpnService() {
                     stream.skip(offset)
                     val chunk = stream.readBytes()
                     offset += chunk.size
-                    chunk.decodeToString()
+
+                    val lines = chunk.decodeToString()
                         .lineSequence()
                         .filter { it.isNotBlank() }
-                        .forEach { TunnelBus.log("hevtun", it) }
+                        .toList()
+
+                    if (lines.size > HEV_LOG_BURST) {
+                        TunnelBus.log(
+                            "hevtun",
+                            "[!] skipped ${lines.size - HEV_LOG_BURST} noisy lines",
+                        )
+                    }
+                    for (line in lines.takeLast(HEV_LOG_BURST)) {
+                        TunnelBus.log("hevtun", line)
+                    }
                 }
             }
         }, HEV_LOG_INTERVAL_MS, HEV_LOG_INTERVAL_MS, TimeUnit.MILLISECONDS)
@@ -378,20 +432,36 @@ class AetherVpnService : VpnService() {
         val scheduler = Executors.newSingleThreadScheduledExecutor()
         statsPoller = scheduler
         scheduler.scheduleWithFixedDelay({
-            if (!TProxyService.isRunning()) return@scheduleWithFixedDelay
+            if (stopping.get() || !TProxyService.isRunning()) {
+                return@scheduleWithFixedDelay
+            }
             publish(TunnelStage.CONNECTED, null)
         }, STATS_INTERVAL_MS, STATS_INTERVAL_MS, TimeUnit.MILLISECONDS)
     }
 
+    private fun requestStop(stage: TunnelStage, message: String?) {
+        if (!stopping.compareAndSet(false, true)) {
+            TunnelBus.publish(TunnelBus.snapshot)
+            return
+        }
+
+        publish(TunnelStage.DISCONNECTING, message)
+        runCatching { control.execute { stopTunnel(stage, message) } }
+            .onFailure {
+                stopping.set(false)
+                publish(stage, message)
+            }
+    }
+
     private fun stopTunnel(stage: TunnelStage, message: String?) {
+        stopping.set(true)
         if (stage == TunnelStage.FAILED && message != null) {
             TunnelBus.log(logSource(), "[-] $message")
         }
-        publish(TunnelStage.DISCONNECTING, message)
         teardown()
         publish(stage, message)
         stopForegroundCompat()
-        stopSelf()
+        stopSelf(latestStartId.get())
     }
 
     private fun teardown() {
@@ -404,10 +474,10 @@ class AetherVpnService : VpnService() {
 
         runCatching { TProxyService.stop() }
         TunnelBus.bindCodeSink(null)
-        core?.stop()
-        core = null
         psiphon?.stop()
         psiphon = null
+        core?.stop()
+        core = null
 
         tunInterface?.let { descriptor ->
             runCatching { descriptor.close() }
@@ -568,6 +638,7 @@ class AetherVpnService : VpnService() {
         private const val VALIDATION_INTERVAL_MS = 1_000L
         private const val STATS_INTERVAL_MS = 1_000L
         private const val HEV_LOG_INTERVAL_MS = 500L
+        private const val HEV_LOG_BURST = 40
 
         fun start(context: Context, config: TunnelConfig) {
             val intent = Intent(context, AetherVpnService::class.java)

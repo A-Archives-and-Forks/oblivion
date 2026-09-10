@@ -95,6 +95,7 @@ class TunnelStatus {
     String? gateway,
     DateTime? connectedAt,
     String? message,
+    bool clearMessage = false,
     bool? tunnelMode,
     bool? tunnelDeviceUp,
   }) {
@@ -103,7 +104,7 @@ class TunnelStatus {
       stats: stats ?? this.stats,
       gateway: gateway ?? this.gateway,
       connectedAt: connectedAt ?? this.connectedAt,
-      message: message ?? this.message,
+      message: clearMessage ? null : (message ?? this.message),
       tunnelMode: tunnelMode ?? this.tunnelMode,
       tunnelDeviceUp: tunnelDeviceUp ?? this.tunnelDeviceUp,
     );
@@ -111,10 +112,15 @@ class TunnelStatus {
 }
 
 class TunnelCapability {
-  const TunnelCapability({required this.embedded, required this.privileged});
+  const TunnelCapability({
+    required this.embedded,
+    required this.privileged,
+    this.conduit = false,
+  });
 
   final bool embedded;
   final bool privileged;
+  final bool conduit;
 
   bool get ready => embedded && privileged;
 
@@ -122,4 +128,11 @@ class TunnelCapability {
     embedded: false,
     privileged: false,
   );
+
+  factory TunnelCapability.fromMap(Map<dynamic, dynamic> map) =>
+      TunnelCapability(
+        embedded: map['embedded'] as bool? ?? true,
+        privileged: map['privileged'] as bool? ?? true,
+        conduit: map['conduit'] as bool? ?? false,
+      );
 }

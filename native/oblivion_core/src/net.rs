@@ -118,8 +118,9 @@ mod imp;
 
 #[cfg(windows)]
 pub use imp::{
-    apply_tunnel_routes, default_route, parse_default_route, revert_tunnel_routes,
-    revert_tunnel_routes_with_edge, tunnel_default_installed, wait_for_interface,
+    apply_tunnel_routes, default_route, interface_index, parse_default_route,
+    revert_tunnel_routes, revert_tunnel_routes_with_edge, tunnel_default_installed,
+    wait_for_interface,
 };
 
 #[cfg(unix)]

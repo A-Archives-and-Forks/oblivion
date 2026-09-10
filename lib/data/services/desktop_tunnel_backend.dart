@@ -117,7 +117,10 @@ class DesktopTunnelBackend {
       }
 
       final logs = _bindings.drainLogs();
-      if (logs.isNotEmpty) _logController.add(logs);
+      if (logs.isEmpty) return;
+      for (final line in const LineSplitter().convert(logs)) {
+        if (line.trim().isNotEmpty) _logController.add(line);
+      }
     });
   }
 
@@ -177,6 +180,8 @@ class DesktopTunnelBackend {
   bool get tunnelDeviceAvailable => _bindings.tunnelDeviceAvailable;
 
   bool get isPrivileged => _bindings.isPrivileged;
+
+  bool get supportsConduit => _bindings.supportsConduit;
 
   void dispose() {
     _poller?.cancel();

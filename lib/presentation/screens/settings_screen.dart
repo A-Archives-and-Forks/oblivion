@@ -9,6 +9,7 @@ import '../../data/models/tunnel_settings.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../providers/app_providers.dart';
 import '../providers/tunnel_providers.dart';
+import '../widgets/developer_note.dart';
 import '../widgets/pickers.dart';
 import '../widgets/screen_header.dart';
 import '../widgets/settings_list.dart';
@@ -64,6 +65,13 @@ String obfuscationTitle(L10n l10n, ObfuscationProfile value) => switch (value) {
   ObfuscationProfile.aggressive => l10n.obfuscationAggressive,
 };
 
+String obfuscationDesc(L10n l10n, ObfuscationProfile value) => switch (value) {
+  ObfuscationProfile.off => l10n.obfuscationOffDesc,
+  ObfuscationProfile.light => l10n.obfuscationLightDesc,
+  ObfuscationProfile.balanced => l10n.obfuscationBalancedDesc,
+  ObfuscationProfile.aggressive => l10n.obfuscationAggressiveDesc,
+};
+
 String routingTitle(L10n l10n, RoutingMode value) => switch (value) {
   RoutingMode.socksOnly => l10n.routingSocks,
   RoutingMode.systemProxy => l10n.routingSystem,
@@ -112,6 +120,15 @@ class SettingsScreen extends ConsumerWidget {
                 SettingsGroup(
                   children: <Widget>[
                     SettingsRow(
+                      title: l10n.devNote,
+                      subtitle: l10n.devNoteDesc,
+                      onTap: () => showDeveloperNote(context),
+                    ),
+                  ],
+                ),
+                SettingsGroup(
+                  children: <Widget>[
+                    SettingsRow(
                       title: l10n.coreEngine,
                       subtitle: coreDesc(l10n, settings.core),
                       value: coreTitle(l10n, settings.core),
@@ -138,7 +155,8 @@ class SettingsScreen extends ConsumerWidget {
                         subtitle: l10n.chainOrderDesc(
                           protocolTitle(l10n, settings.protocol),
                         ),
-                        value: '${settings.aetherSocksPort} → '
+                        value:
+                            '${settings.aetherSocksPort} → '
                             '${settings.socksPort}',
                       ),
                     if (settings.usesPsiphon)
@@ -237,6 +255,7 @@ class SettingsScreen extends ConsumerWidget {
                                 (v) => PickerOption<ObfuscationProfile>(
                                   value: v,
                                   title: obfuscationTitle(l10n, v),
+                                  subtitle: obfuscationDesc(l10n, v),
                                 ),
                               )
                               .toList(),
@@ -317,10 +336,10 @@ class SettingsScreen extends ConsumerWidget {
                       SettingsRow(
                         title: l10n.splitTunnel,
                         subtitle: l10n.splitTunnelDesc,
-                        value:
-                            settings.splitTunnelMode == SplitTunnelMode.disabled
-                            ? l10n.splitTunnelDisabled
-                            : '${settings.bypassedApps.length}',
+                        value: settings.splitTunnelActive
+                            ? '${splitModeTitle(l10n, settings.splitTunnelMode)}'
+                                  ' · ${settings.bypassedApps.length}'
+                            : l10n.splitTunnelDisabled,
                         onTap: () => Navigator.of(context).push(
                           CupertinoPageRoute<void>(
                             builder: (_) => const SplitTunnelScreen(),

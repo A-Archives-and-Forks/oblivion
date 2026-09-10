@@ -1,10 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../data/models/mtu_plan.dart';
 import '../../data/models/tunnel_settings.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../providers/tunnel_providers.dart';
+import '../widgets/mtu_optimizer_sheet.dart';
 import '../widgets/pickers.dart';
 import '../widgets/screen_header.dart';
 import '../widgets/settings_list.dart';
@@ -19,12 +23,26 @@ class AdvancedScreen extends ConsumerWidget {
     IpVersion.dual => l10n.ipDual,
   };
 
+  String _ipDesc(L10n l10n, IpVersion value) => switch (value) {
+    IpVersion.v4 => l10n.ipV4Desc,
+    IpVersion.v6 => l10n.ipV6Desc,
+    IpVersion.dual => l10n.ipDualDesc,
+  };
+
   String _logTitle(L10n l10n, CoreLogLevel value) => switch (value) {
     CoreLogLevel.error => l10n.logLevelError,
     CoreLogLevel.warn => l10n.logLevelWarn,
     CoreLogLevel.info => l10n.logLevelInfo,
     CoreLogLevel.debug => l10n.logLevelDebug,
     CoreLogLevel.trace => l10n.logLevelTrace,
+  };
+
+  String _logDesc(L10n l10n, CoreLogLevel value) => switch (value) {
+    CoreLogLevel.error => l10n.logLevelErrorDesc,
+    CoreLogLevel.warn => l10n.logLevelWarnDesc,
+    CoreLogLevel.info => l10n.logLevelInfoDesc,
+    CoreLogLevel.debug => l10n.logLevelDebugDesc,
+    CoreLogLevel.trace => l10n.logLevelTraceDesc,
   };
 
   String _perfTitle(L10n l10n, PerfProfile value) => switch (value) {
@@ -34,9 +52,74 @@ class AdvancedScreen extends ConsumerWidget {
     PerfProfile.high => l10n.perfHigh,
   };
 
+  String _perfDesc(L10n l10n, PerfProfile value) => switch (value) {
+    PerfProfile.auto => l10n.perfAutoDesc,
+    PerfProfile.low => l10n.perfLowDesc,
+    PerfProfile.medium => l10n.perfMediumDesc,
+    PerfProfile.high => l10n.perfHighDesc,
+  };
+
   String _ruleSummary(L10n l10n, String raw) {
     final count = TunnelSettings.routeRules(raw).length;
     return count == 0 ? l10n.ruleNone : '$count';
+  }
+
+  String? _outOfRange(L10n l10n, String raw, int low, int high) {
+    final parsed = int.tryParse(raw.trim());
+    if (parsed != null && parsed >= low && parsed <= high) return null;
+    return l10n.mtuRangeRefusal('$low', '$high');
+  }
+
+  String? _badPort(L10n l10n, String raw, int low, int high) {
+    final parsed = int.tryParse(raw.trim());
+    if (parsed != null && parsed >= low && parsed <= high) return null;
+    return l10n.portRangeRefusal('$low', '$high');
+  }
+
+  String? _badSeconds(L10n l10n, String raw, int low, int high) {
+    final parsed = int.tryParse(raw.trim());
+    if (parsed != null && parsed >= low && parsed <= high) return null;
+    return l10n.secondsRangeRefusal('$low', '$high');
+  }
+
+  List<String> _resolvers(String raw) => raw
+      .split(RegExp(r'[,\s]+'))
+      .map((part) => part.trim())
+      .where(isIpAddress)
+      .toList();
+
+  bool _measurementBypassesTunnel() => Platform.isAndroid;
+
+  Future<void> _optimiseMtu({
+    required BuildContext context,
+    required L10n l10n,
+    required TunnelSettingsController controller,
+    required TunnelSettings settings,
+    required bool tunnelBusy,
+  }) async {
+    if (tunnelBusy && !_measurementBypassesTunnel()) {
+      await showNoticeDialog(
+        context: context,
+        title: l10n.mtuOptimizeTitle,
+        message: l10n.mtuOptimizeBusy,
+        dismissLabel: l10n.confirm,
+      );
+      return;
+    }
+
+    final plan = await showMtuOptimizerSheet(
+      context: context,
+      settings: settings,
+    );
+    if (plan == null) return;
+
+    await controller.update(
+      (s) => s.copyWith(
+        tunnelMtu: plan.tunnelMtu,
+        coreMtu: plan.coreMtu,
+        pathMtu: plan.pathMtu,
+      ),
+    );
   }
 
   Future<void> _editHop({
@@ -51,7 +134,8 @@ class AdvancedScreen extends ConsumerWidget {
     return showTextEditorSheet(
       context: context,
       title: title,
-      description: '${outer ? l10n.wiwOuterDesc : l10n.wiwInnerDesc}\n\n'
+      description:
+          '${outer ? l10n.wiwOuterDesc : l10n.wiwInnerDesc}\n\n'
           '${l10n.wiwHint}',
       initial: outer ? settings.wiwOuter : settings.wiwInner,
       placeholder: outer ? '162.159.192.1:2408' : '188.114.96.1:2408',
@@ -82,7 +166,8 @@ class AdvancedScreen extends ConsumerWidget {
         }
 
         await controller.update(
-          (s) => outer ? s.copyWith(wiwOuter: value) : s.copyWith(wiwInner: value),
+          (s) =>
+              outer ? s.copyWith(wiwOuter: value) : s.copyWith(wiwInner: value),
         );
       },
     );
@@ -180,13 +265,10 @@ class AdvancedScreen extends ConsumerWidget {
                         digitsOnly: true,
                         cancelLabel: l10n.cancel,
                         saveLabel: l10n.save,
-                        onSaved: (v) {
-                          final port = int.tryParse(v.trim());
-                          if (port == null || port < 1024 || port > 65535) {
-                            return;
-                          }
-                          controller.update((s) => s.copyWith(socksPort: port));
-                        },
+                        validator: (v) => _badPort(l10n, v, 1024, 65535),
+                        onSaved: (v) => controller.update(
+                          (s) => s.copyWith(socksPort: int.parse(v.trim())),
+                        ),
                       ),
                     ),
                     SettingsRow(
@@ -221,13 +303,10 @@ class AdvancedScreen extends ConsumerWidget {
                         placeholder: '1.1.1.1, 1.0.0.1',
                         cancelLabel: l10n.cancel,
                         saveLabel: l10n.save,
+                        validator: (v) =>
+                            _resolvers(v).isEmpty ? l10n.dnsRefusal : null,
                         onSaved: (v) {
-                          final parts = v
-                              .split(RegExp(r'[,\s]+'))
-                              .map((part) => part.trim())
-                              .where(isIpAddress)
-                              .toList();
-                          if (parts.isEmpty) return;
+                          final parts = _resolvers(v);
                           controller.update(
                             (s) => s.copyWith(
                               dnsPrimary: parts.first,
@@ -286,6 +365,7 @@ class AdvancedScreen extends ConsumerWidget {
                               (v) => PickerOption<IpVersion>(
                                 value: v,
                                 title: _ipTitle(l10n, v),
+                                subtitle: _ipDesc(l10n, v),
                               ),
                             )
                             .toList(),
@@ -376,12 +456,12 @@ class AdvancedScreen extends ConsumerWidget {
                         initial: settings.fragmentSize,
                         cancelLabel: l10n.cancel,
                         saveLabel: l10n.save,
-                        onSaved: (v) {
-                          if (!TunnelSettings.isValidRange(v)) return;
-                          controller.update(
-                            (s) => s.copyWith(fragmentSize: v.trim()),
-                          );
-                        },
+                        validator: (v) => TunnelSettings.isValidRange(v)
+                            ? null
+                            : l10n.rangeHint,
+                        onSaved: (v) => controller.update(
+                          (s) => s.copyWith(fragmentSize: v.trim()),
+                        ),
                       ),
                     ),
                     SettingsRow(
@@ -396,12 +476,12 @@ class AdvancedScreen extends ConsumerWidget {
                         initial: settings.fragmentDelay,
                         cancelLabel: l10n.cancel,
                         saveLabel: l10n.save,
-                        onSaved: (v) {
-                          if (!TunnelSettings.isValidRange(v)) return;
-                          controller.update(
-                            (s) => s.copyWith(fragmentDelay: v.trim()),
-                          );
-                        },
+                        validator: (v) => TunnelSettings.isValidRange(v)
+                            ? null
+                            : l10n.rangeHint,
+                        onSaved: (v) => controller.update(
+                          (s) => s.copyWith(fragmentDelay: v.trim()),
+                        ),
                       ),
                     ),
                     SettingsRow(
@@ -471,13 +551,11 @@ class AdvancedScreen extends ConsumerWidget {
                         digitsOnly: true,
                         cancelLabel: l10n.cancel,
                         saveLabel: l10n.save,
-                        onSaved: (v) {
-                          final secs = int.tryParse(v.trim());
-                          if (secs == null || secs < 1 || secs > 120) return;
-                          controller.update(
-                            (s) => s.copyWith(validateSeconds: secs),
-                          );
-                        },
+                        validator: (v) => _badSeconds(l10n, v, 1, 120),
+                        onSaved: (v) => controller.update(
+                          (s) =>
+                              s.copyWith(validateSeconds: int.parse(v.trim())),
+                        ),
                       ),
                     ),
                     SettingsRow(
@@ -491,13 +569,11 @@ class AdvancedScreen extends ConsumerWidget {
                         digitsOnly: true,
                         cancelLabel: l10n.cancel,
                         saveLabel: l10n.save,
-                        onSaved: (v) {
-                          final secs = int.tryParse(v.trim());
-                          if (secs == null || secs < 1 || secs > 60) return;
-                          controller.update(
-                            (s) => s.copyWith(reconnectSeconds: secs),
-                          );
-                        },
+                        validator: (v) => _badSeconds(l10n, v, 1, 60),
+                        onSaved: (v) => controller.update(
+                          (s) =>
+                              s.copyWith(reconnectSeconds: int.parse(v.trim())),
+                        ),
                       ),
                     ),
                     SettingsRow(
@@ -512,13 +588,10 @@ class AdvancedScreen extends ConsumerWidget {
                         digitsOnly: true,
                         cancelLabel: l10n.cancel,
                         saveLabel: l10n.save,
-                        onSaved: (v) {
-                          final secs = int.tryParse(v.trim());
-                          if (secs == null || secs < 1 || secs > 120) return;
-                          controller.update(
-                            (s) => s.copyWith(wgKeepalive: secs),
-                          );
-                        },
+                        validator: (v) => _badSeconds(l10n, v, 1, 120),
+                        onSaved: (v) => controller.update(
+                          (s) => s.copyWith(wgKeepalive: int.parse(v.trim())),
+                        ),
                       ),
                     ),
                     SettingsRow(
@@ -547,21 +620,38 @@ class AdvancedScreen extends ConsumerWidget {
                       ),
                     SettingsRow(
                       title: l10n.tunnelMtu,
-                      subtitle: l10n.tunnelMtuDesc,
+                      subtitle: settings.pathMtu > 0
+                          ? l10n.tunnelMtuMeasured('${settings.pathMtu}')
+                          : l10n.tunnelMtuDesc,
                       value: '${settings.tunnelMtu}',
                       onTap: () => showTextEditorSheet(
                         context: context,
                         title: l10n.tunnelMtu,
-                        description: l10n.tunnelMtuDesc,
+                        description:
+                            '${l10n.tunnelMtuDesc}\n${l10n.settingsNeedReconnect}',
                         initial: '${settings.tunnelMtu}',
                         digitsOnly: true,
                         cancelLabel: l10n.cancel,
                         saveLabel: l10n.save,
-                        onSaved: (v) {
-                          final mtu = int.tryParse(v.trim());
-                          if (mtu == null || mtu < 1280 || mtu > 9000) return;
-                          controller.update((s) => s.copyWith(tunnelMtu: mtu));
-                        },
+                        validator: (v) =>
+                            _outOfRange(l10n, v, kTunnelMtuMin, kTunnelMtuMax),
+                        onSaved: (v) => controller.update(
+                          (s) => s.copyWith(
+                            tunnelMtu: int.parse(v.trim()),
+                            coreMtu: 0,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SettingsRow(
+                      title: l10n.mtuOptimize,
+                      subtitle: l10n.mtuOptimizeDesc,
+                      onTap: () => _optimiseMtu(
+                        context: context,
+                        l10n: l10n,
+                        controller: controller,
+                        settings: settings,
+                        tunnelBusy: !ref.read(tunnelProvider).stage.isIdle,
                       ),
                     ),
                     SettingsRow(
@@ -576,6 +666,7 @@ class AdvancedScreen extends ConsumerWidget {
                               (v) => PickerOption<CoreLogLevel>(
                                 value: v,
                                 title: _logTitle(l10n, v),
+                                subtitle: _logDesc(l10n, v),
                               ),
                             )
                             .toList(),
@@ -596,6 +687,7 @@ class AdvancedScreen extends ConsumerWidget {
                               (v) => PickerOption<PerfProfile>(
                                 value: v,
                                 title: _perfTitle(l10n, v),
+                                subtitle: _perfDesc(l10n, v),
                               ),
                             )
                             .toList(),

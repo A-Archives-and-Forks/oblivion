@@ -60,6 +60,8 @@ pub struct TunnelSettings {
     #[serde(default = "default_mtu")]
     pub tunnel_mtu: u16,
     #[serde(default)]
+    pub core_mtu: u16,
+    #[serde(default)]
     pub bypass_uid: Option<u32>,
     #[serde(default)]
     pub edge_endpoint: String,
@@ -92,6 +94,11 @@ fn default_tunnel_interface() -> String {
 fn default_mtu() -> u16 {
     8500
 }
+
+const TUN_MTU_MIN: u16 = 1280;
+const TUN_MTU_MAX: u16 = 9000;
+const CORE_MTU_MIN: u16 = 576;
+const CORE_MTU_MAX: u16 = 1500;
 
 fn default_core() -> String {
     crate::psiphon::CORE_AETHER.to_string()
@@ -283,6 +290,12 @@ impl TunnelSettings {
             env.push(("AETHER_DNS".to_string(), self.dns_servers().join(",")));
         }
 
+        if self.protocol == "masque" {
+            if let Some(mtu) = self.inner_mtu() {
+                env.push(("AETHER_MASQUE_MTU".to_string(), mtu.to_string()));
+            }
+        }
+
         if self.protocol == "masque" && self.transport == "h2" {
             env.push(("AETHER_MASQUE_HTTP2".to_string(), "1".to_string()));
             if self.fragment {
@@ -362,6 +375,19 @@ impl TunnelSettings {
         servers
     }
 
+    pub fn tun_mtu(&self) -> u16 {
+        self.tunnel_mtu.clamp(TUN_MTU_MIN, TUN_MTU_MAX)
+    }
+
+    pub fn inner_mtu(&self) -> Option<u16> {
+        for candidate in [self.core_mtu, self.tunnel_mtu] {
+            if (CORE_MTU_MIN..=CORE_MTU_MAX).contains(&candidate) {
+                return Some(candidate);
+            }
+        }
+        None
+    }
+
     pub fn tunnel_mode(&self) -> bool {
         !self.proxy_only
     }
@@ -394,9 +420,9 @@ impl TunnelSettings {
 
     pub fn hev_log_level(&self) -> &'static str {
         match self.log_level.as_str() {
-            "trace" | "debug" => "debug",
-            "info" => "info",
-            _ => "error",
+            "trace" => "debug",
+            "debug" => "info",
+            _ => "warn",
         }
     }
 
@@ -404,7 +430,7 @@ impl TunnelSettings {
         let mut config = String::new();
         config.push_str("tunnel:\n");
         config.push_str(&format!("  name: '{}'\n", self.tunnel_interface));
-        config.push_str(&format!("  mtu: {}\n", self.tunnel_mtu));
+        config.push_str(&format!("  mtu: {}\n", self.tun_mtu()));
         config.push_str("  ipv4: '198.18.0.1'\n");
         if self.dual_stack() {
             config.push_str("  ipv6: 'fc00::1'\n");
@@ -485,6 +511,62 @@ mod tests {
             .find(|(key, _)| key == "AETHER_ROUTE_BLOCK")
             .map(|(_, value)| value.as_str());
         assert_eq!(blocked, Some("one.example,two.example,three.example"));
+    }
+}
+
+#[cfg(test)]
+mod mtu_tests {
+    use super::*;
+
+    fn settings_from(json: &str) -> TunnelSettings {
+        serde_json::from_str(json).expect("settings should parse")
+    }
+
+    fn value_of<'a>(env: &'a [(String, String)], key: &str) -> Option<&'a str> {
+        env.iter()
+            .find(|(name, _)| name == key)
+            .map(|(_, value)| value.as_str())
+    }
+
+    #[test]
+    fn the_default_tun_mtu_survives_the_clamp() {
+        assert_eq!(settings_from("{}").tun_mtu(), 8500);
+    }
+
+    #[test]
+    fn a_tun_mtu_outside_the_range_is_pulled_back_in() {
+        assert_eq!(settings_from(r#"{"tunnelMtu":42}"#).tun_mtu(), 1280);
+        assert_eq!(settings_from(r#"{"tunnelMtu":65000}"#).tun_mtu(), 9000);
+    }
+
+    #[test]
+    fn the_default_leaves_the_core_mtu_to_the_core() {
+        let env = settings_from("{}").core_environment();
+        assert!(value_of(&env, "AETHER_MASQUE_MTU").is_none());
+    }
+
+    #[test]
+    fn a_measured_core_mtu_reaches_the_core() {
+        let env = settings_from(r#"{"tunnelMtu":1280,"coreMtu":1180}"#).core_environment();
+        assert_eq!(value_of(&env, "AETHER_MASQUE_MTU"), Some("1180"));
+    }
+
+    #[test]
+    fn a_hand_typed_mtu_the_core_can_use_is_forwarded_on_its_own() {
+        let env = settings_from(r#"{"tunnelMtu":1400}"#).core_environment();
+        assert_eq!(value_of(&env, "AETHER_MASQUE_MTU"), Some("1400"));
+    }
+
+    #[test]
+    fn wireguard_keeps_its_own_packet_size() {
+        let env = settings_from(r#"{"protocol":"wg","tunnelMtu":1400}"#).core_environment();
+        assert!(value_of(&env, "AETHER_MASQUE_MTU").is_none());
+    }
+
+    #[test]
+    fn the_tunnel_device_is_told_the_clamped_mtu() {
+        let config = settings_from(r#"{"tunnelMtu":40000}"#).hev_config(None);
+        assert!(config.contains("  mtu: 9000\n"));
     }
 }
 

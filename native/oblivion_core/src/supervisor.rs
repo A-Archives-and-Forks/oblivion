@@ -1097,6 +1097,7 @@ impl Supervisor {
             }
         }
 
+        self.device.watch_interface(&settings.tunnel_interface);
         self.device
             .start(settings.hev_config(log_path.to_str()))?;
         self.spawn_log_tail(log_path.clone(), "hevtun");

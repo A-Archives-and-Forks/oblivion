@@ -375,14 +375,36 @@ jobs:
           set -e
           root=$(cygpath "$GITHUB_WORKSPACE")
           dest="$root/windows/hevtun"
+          source="$root/android/aether-vpn/src/main/jni/hev-socks5-tunnel"
+
+          if [ ! -f "$source/Makefile" ]; then
+            echo "::error::hev-socks5-tunnel is missing, the checkout needs its submodules"
+            exit 1
+          fi
+
           mkdir -p "$dest"
-          cd "$root/android/aether-vpn/src/main/jni/hev-socks5-tunnel"
+          cd "$source"
           make -j"$(nproc)" CFLAGS=-Wno-error
-          cp bin/hev-socks5-tunnel.exe "$dest/"
+
+          built=$(ls bin/hev-socks5-tunnel*.exe 2>/dev/null | head -1 || true)
+          if [ -z "$built" ]; then
+            echo "::error::the build left no hev-socks5-tunnel executable behind"
+            ls -la bin 2>/dev/null || true
+            exit 1
+          fi
+
+          cp "$built" "$dest/hev-socks5-tunnel.exe"
           cp third-part/wintun/bin/wintun.dll "$dest/"
-          ldd bin/hev-socks5-tunnel.exe | awk '/msys/ {print $3}' | while read -r dll; do
-            cp "$dll" "$dest/"
+
+          for dll in $(ldd "$built" 2>/dev/null | awk '/msys-/ {print $3}' | sort -u); do
+            if [ -f "$dll" ]; then cp "$dll" "$dest/"; fi
           done
+
+          if ! ls "$dest"/msys-*.dll >/dev/null 2>&1; then
+            echo "ldd named no msys runtime, taking it from /usr/bin instead"
+            cp /usr/bin/msys-2.0.dll "$dest/"
+          fi
+
           ls -la "$dest"
 
       - name: Build
@@ -394,7 +416,8 @@ jobs:
         shell: pwsh
         run: |
           $runner = "build/windows/${{ matrix.arch }}/runner/Release"
-          foreach ($artefact in @("hev-socks5-tunnel.exe", "wintun.dll")) {
+          foreach ($artefact in @("oblivion-helper.exe", "hev-socks5-tunnel.exe",
+                                  "wintun.dll")) {
             if (-not (Test-Path "$runner/$artefact")) {
               Write-Output "::error::$artefact is missing, the release would be proxy only"
               exit 1

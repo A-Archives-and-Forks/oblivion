@@ -47,6 +47,9 @@ class PsiphonScreen extends ConsumerWidget {
     final controller = ref.read(tunnelSettingsProvider.notifier);
 
     final country = settings.psiphonCountry.trim().toUpperCase();
+    final capability = ref.watch(tunnelCapabilityProvider).value;
+    final conduitReady = capability?.conduit ?? true;
+    final onConduit = settings.psiphonUsesConduit;
 
     return CupertinoPageScaffold(
       backgroundColor: palette.canvas,
@@ -66,25 +69,36 @@ class PsiphonScreen extends ConsumerWidget {
                         title: l10n.coreChain,
                         subtitle: l10n.chainNeedsTcp,
                       ),
+                    if (onConduit && !conduitReady)
+                      SettingsRow(
+                        title: l10n.psiphonModeConduit,
+                        subtitle: l10n.psiphonConduitUnavailable,
+                        destructive: true,
+                      ),
                     SettingsRow(
                       title: l10n.psiphonCountry,
-                      subtitle: l10n.psiphonCountryDesc,
+                      subtitle: onConduit
+                          ? l10n.psiphonCountryIgnoredOnConduit
+                          : l10n.psiphonCountryDesc,
+                      enabled: !onConduit,
                       value: country.isEmpty
                           ? l10n.psiphonCountryAuto
                           : country,
                       trailing: country.isEmpty
                           ? null
                           : FlagIcon(countryCode: country),
-                      onTap: () => showCountrySheet(
-                        context: context,
-                        title: l10n.psiphonCountry,
-                        selected: country,
-                        autoLabel: l10n.psiphonCountryAuto,
-                        countryCodes: psiphonCountries,
-                        onSelected: (value) => controller.update(
-                          (s) => s.copyWith(psiphonCountry: value),
-                        ),
-                      ),
+                      onTap: onConduit
+                          ? null
+                          : () => showCountrySheet(
+                              context: context,
+                              title: l10n.psiphonCountry,
+                              selected: country,
+                              autoLabel: l10n.psiphonCountryAuto,
+                              countryCodes: psiphonCountries,
+                              onSelected: (value) => controller.update(
+                                (s) => s.copyWith(psiphonCountry: value),
+                              ),
+                            ),
                     ),
                     SettingsRow(
                       title: l10n.psiphonMode,
@@ -97,8 +111,8 @@ class PsiphonScreen extends ConsumerWidget {
                         options: PsiphonMode.values
                             .where(
                               (value) =>
-                                  !settings.usesChain ||
-                                  value != PsiphonMode.conduit,
+                                  value != PsiphonMode.conduit ||
+                                  (!settings.usesChain && conduitReady),
                             )
                             .map(
                               (value) => PickerOption<PsiphonMode>(

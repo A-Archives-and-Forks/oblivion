@@ -404,6 +404,25 @@ class L10nEn extends L10n {
   String get splitTunnelBlacklistDesc => 'Selected apps skip the tunnel';
 
   @override
+  String get splitTunnelWhitelist => 'Only selected';
+
+  @override
+  String get splitTunnelWhitelistDesc =>
+      'Only the apps you pick go through the tunnel, everything else goes out directly';
+
+  @override
+  String splitAllowCount(String count) {
+    return '$count apps go through the tunnel';
+  }
+
+  @override
+  String get splitAllowEmpty =>
+      'Pick at least one app, or nothing will go through the tunnel';
+
+  @override
+  String get splitTunnelPick => 'Which apps';
+
+  @override
   String get showSystemApps => 'Show system apps';
 
   @override
@@ -451,6 +470,58 @@ class L10nEn extends L10n {
 
   @override
   String get perfHigh => 'High';
+
+  @override
+  String get obfuscationOffDesc => 'No reshaping, the fastest handshake';
+
+  @override
+  String get obfuscationLightDesc =>
+      'A light touch, for networks that barely look';
+
+  @override
+  String get obfuscationBalancedDesc =>
+      'The usual choice, works on most networks';
+
+  @override
+  String get obfuscationAggressiveDesc =>
+      'Heaviest reshaping, for networks that fingerprint hard';
+
+  @override
+  String get ipV4Desc => 'Reach gateways over IPv4 only';
+
+  @override
+  String get ipV6Desc => 'Reach gateways over IPv6 only';
+
+  @override
+  String get ipDualDesc => 'Try both, keep whichever answers';
+
+  @override
+  String get logLevelErrorDesc => 'Only what went wrong';
+
+  @override
+  String get logLevelWarnDesc => 'Errors and warnings';
+
+  @override
+  String get logLevelInfoDesc => 'The usual choice, one line per step';
+
+  @override
+  String get logLevelDebugDesc =>
+      'Everything the core does, for chasing a problem';
+
+  @override
+  String get logLevelTraceDesc => 'Every packet decision, very noisy';
+
+  @override
+  String get perfAutoDesc => 'Match the device the app is running on';
+
+  @override
+  String get perfLowDesc => 'Smallest buffers, easiest on an old phone';
+
+  @override
+  String get perfMediumDesc => 'A middle ground for everyday hardware';
+
+  @override
+  String get perfHighDesc => 'Largest buffers, fastest on a strong device';
 
   @override
   String get quickReconnect => 'Quick reconnect';
@@ -697,7 +768,146 @@ class L10nEn extends L10n {
 
   @override
   String get tunnelMtuDesc =>
-      'Packet size. Lower it if the connection feels slow';
+      'Largest packet the tunnel carries whole. Between 1280 and 9000';
+
+  @override
+  String tunnelMtuMeasured(String path) {
+    return 'Measured path $path bytes';
+  }
+
+  @override
+  String get mtuOptimize => 'Find the best MTU';
+
+  @override
+  String get mtuOptimizeDesc =>
+      'Measures your real connection and keeps the largest packet that survives it';
+
+  @override
+  String get mtuOptimizeTitle => 'MTU optimizer';
+
+  @override
+  String get mtuOptimizeMeasuring => 'Measuring your connection';
+
+  @override
+  String get mtuOptimizeHint =>
+      'A handful of tiny probes go out to public servers. This takes a few seconds.';
+
+  @override
+  String get mtuOptimizeLink => 'Local link';
+
+  @override
+  String get mtuOptimizePath => 'Internet path';
+
+  @override
+  String get mtuOptimizeOverhead => 'Tunnel overhead';
+
+  @override
+  String get mtuOptimizeTransport => 'Transport';
+
+  @override
+  String get mtuOptimizeResult => 'Best MTU';
+
+  @override
+  String get mtuOptimizeCore => 'Core packet size';
+
+  @override
+  String get mtuOptimizeApply => 'Apply';
+
+  @override
+  String get mtuOptimizeRetry => 'Measure again';
+
+  @override
+  String get mtuOptimizeUnchanged =>
+      'Your MTU is already the best value for this network';
+
+  @override
+  String get mtuOptimizeNarrow =>
+      'This network only carries small packets, so the tunnel is set to match it';
+
+  @override
+  String get mtuOptimizeTight =>
+      'The path is too narrow even for the MASQUE handshake. Try HTTP/2 or WireGuard if the tunnel will not come up.';
+
+  @override
+  String get mtuOptimizeBusy =>
+      'Disconnect first, so the measurement sees your real network instead of the tunnel';
+
+  @override
+  String get mtuOptimizeFailed => 'The measurement did not finish';
+
+  @override
+  String get mtuOptimizeFailedUnreachable =>
+      'No probe came back. The network may be blocking UDP, or you are offline.';
+
+  @override
+  String get mtuOptimizeFailedDf =>
+      'This device would not send unfragmented probes, so the path cannot be measured here.';
+
+  @override
+  String get mtuOptimizeFailedSocket =>
+      'The app could not open a socket for the measurement';
+
+  @override
+  String get mtuOptimizePartial =>
+      'The measurement ran out of time, so the value below is a safe lower bound';
+
+  @override
+  String mtuRangeRefusal(String min, String max) {
+    return 'Enter a number between $min and $max';
+  }
+
+  @override
+  String portRangeRefusal(String min, String max) {
+    return 'Enter a port between $min and $max';
+  }
+
+  @override
+  String secondsRangeRefusal(String min, String max) {
+    return 'Enter a number of seconds between $min and $max';
+  }
+
+  @override
+  String get dnsRefusal => 'Enter one or two IP addresses';
+
+  @override
+  String get settingsNeedReconnect => 'Reconnect for this to take effect';
+
+  @override
+  String get devNote => 'Read the developer note';
+
+  @override
+  String get devNoteDesc => 'How to pick a protocol on a restricted network';
+
+  @override
+  String get devNoteTitle => 'Note from the developer';
+
+  @override
+  String get devNoteIntro =>
+      'On heavily filtered networks, and in Iran above all, MASQUE over HTTP/3 rarely stays up. HTTP/3 rides on QUIC, and QUIC is UDP, which is the first thing those networks throttle or drop. If your line is restricted, do not start there.';
+
+  @override
+  String get devNoteHttp2Title => 'Start with HTTP/2';
+
+  @override
+  String get devNoteHttp2Body =>
+      'In Settings, set Connection type to HTTP/2 over TCP. It looks like ordinary web traffic, and on a restricted line it is by far the steadiest choice.';
+
+  @override
+  String get devNoteWireGuardTitle => 'Or use WireGuard';
+
+  @override
+  String get devNoteWireGuardBody =>
+      'Set Protocol to WireGuard. Mind the scanner: on Balanced the search takes a while, so give it time before you decide it failed. If you want a result quickly, set Scan mode to Turbo.';
+
+  @override
+  String get devNoteGoolTitle => 'Gool usually works well';
+
+  @override
+  String get devNoteGoolBody =>
+      'From Iran, Gool almost always comes out on a German address and gives no trouble. Once in a while it lands back on an Iranian address. Disconnect and connect again a couple of times and it clears up.';
+
+  @override
+  String get devNoteDismiss => 'Got it';
 
   @override
   String get tunnelDeviceState => 'Device state';
@@ -1084,6 +1294,14 @@ class L10nEn extends L10n {
   @override
   String get psiphonUnprovisioned =>
       'This build carries no Psiphon credentials, so the Psiphon core cannot connect';
+
+  @override
+  String get psiphonConduitUnavailable =>
+      'This build embeds no conduit credentials, so conduit mode cannot connect';
+
+  @override
+  String get psiphonCountryIgnoredOnConduit =>
+      'Conduit reaches the network through volunteer peers, so the country is chosen for you';
 
   @override
   String get psiphonNotAvailable =>

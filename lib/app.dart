@@ -11,6 +11,7 @@ import 'presentation/providers/app_providers.dart';
 import 'presentation/providers/tunnel_providers.dart';
 import 'presentation/screens/home_screen.dart';
 import 'presentation/screens/splash_screen.dart';
+import 'presentation/widgets/developer_note.dart';
 
 class OblivionApp extends ConsumerWidget {
   const OblivionApp({super.key});
@@ -53,7 +54,21 @@ class _Entry extends ConsumerStatefulWidget {
 
 class _EntryState extends ConsumerState<_Entry> {
   bool _splashDone = false;
+  bool _noteRaised = false;
   String? _trayLocale;
+
+  void _raiseDeveloperNote() {
+    if (_noteRaised) return;
+    if (ref.read(appPreferencesProvider).devNoteSeen) return;
+    _noteRaised = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await showDeveloperNote(context);
+      if (!mounted) return;
+      await ref.read(appPreferencesProvider.notifier).markDevNoteSeen();
+    });
+  }
 
   void _syncTray(L10n l10n, Locale locale) {
     if (!DesktopShell.isSupported) return;
@@ -88,7 +103,10 @@ class _EntryState extends ConsumerState<_Entry> {
       });
     }
 
-    if (_splashDone) return const HomeScreen();
+    if (_splashDone) {
+      _raiseDeveloperNote();
+      return const HomeScreen();
+    }
 
     return SplashScreen(onDone: () => setState(() => _splashDone = true));
   }

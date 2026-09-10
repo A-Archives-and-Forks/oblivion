@@ -404,6 +404,25 @@ class L10nFa extends L10n {
       'اپ‌های انتخاب‌شده از تونل رد نمی‌شوند';
 
   @override
+  String get splitTunnelWhitelist => 'فقط انتخاب‌شده‌ها';
+
+  @override
+  String get splitTunnelWhitelistDesc =>
+      'فقط برنامه‌هایی که انتخاب می‌کنید از تونل رد می‌شوند، بقیه مستقیم می‌روند';
+
+  @override
+  String splitAllowCount(String count) {
+    return '$count برنامه از تونل رد می‌شوند';
+  }
+
+  @override
+  String get splitAllowEmpty =>
+      'دست‌کم یک برنامه انتخاب کنید، وگرنه هیچ ترافیکی از تونل رد نمی‌شود';
+
+  @override
+  String get splitTunnelPick => 'کدام برنامه‌ها';
+
+  @override
   String get showSystemApps => 'نمایش اپ‌های سیستمی';
 
   @override
@@ -452,6 +471,57 @@ class L10nFa extends L10n {
 
   @override
   String get perfHigh => 'زیاد';
+
+  @override
+  String get obfuscationOffDesc => 'بدون تغییر شکل، سریع‌ترین دست‌دادن';
+
+  @override
+  String get obfuscationLightDesc =>
+      'دست‌کاری سبک، برای شبکه‌هایی که سخت‌گیر نیستند';
+
+  @override
+  String get obfuscationBalancedDesc =>
+      'انتخاب معمول، روی بیشتر شبکه‌ها کار می‌کند';
+
+  @override
+  String get obfuscationAggressiveDesc =>
+      'سنگین‌ترین تغییر شکل، برای شبکه‌های سخت‌گیر';
+
+  @override
+  String get ipV4Desc => 'فقط از راه IPv4 به دروازه‌ها وصل شو';
+
+  @override
+  String get ipV6Desc => 'فقط از راه IPv6 به دروازه‌ها وصل شو';
+
+  @override
+  String get ipDualDesc => 'هر دو را امتحان کن و هرکدام جواب داد نگه دار';
+
+  @override
+  String get logLevelErrorDesc => 'فقط چیزی که خراب شده';
+
+  @override
+  String get logLevelWarnDesc => 'خطاها و هشدارها';
+
+  @override
+  String get logLevelInfoDesc => 'انتخاب معمول، هر مرحله یک خط';
+
+  @override
+  String get logLevelDebugDesc => 'هرچه هسته انجام می‌دهد، برای ردیابی یک مشکل';
+
+  @override
+  String get logLevelTraceDesc => 'تصمیم تک‌تک بسته‌ها، بسیار پرحرف';
+
+  @override
+  String get perfAutoDesc => 'متناسب با دستگاهی که برنامه روی آن اجرا می‌شود';
+
+  @override
+  String get perfLowDesc => 'کوچک‌ترین بافرها، سبک برای گوشی قدیمی';
+
+  @override
+  String get perfMediumDesc => 'حد وسط برای سخت‌افزار معمولی';
+
+  @override
+  String get perfHighDesc => 'بزرگ‌ترین بافرها، سریع‌ترین روی دستگاه قوی';
 
   @override
   String get quickReconnect => 'اتصال سریع مجدد';
@@ -695,7 +765,147 @@ class L10nFa extends L10n {
   String get tunnelMtu => 'MTU';
 
   @override
-  String get tunnelMtuDesc => 'اندازه بسته‌ها. اگر اتصال کند است کمترش کنید';
+  String get tunnelMtuDesc =>
+      'بزرگ‌ترین بسته‌ای که تونل سالم رد می‌کند. بین 1280 تا 9000';
+
+  @override
+  String tunnelMtuMeasured(String path) {
+    return 'مسیر اندازه‌گیری‌شده: $path بایت';
+  }
+
+  @override
+  String get mtuOptimize => 'پیدا کردن بهترین MTU';
+
+  @override
+  String get mtuOptimizeDesc =>
+      'اینترنت شما واقعاً اندازه‌گیری می‌شود و بزرگ‌ترین بسته‌ای که سالم رد شود انتخاب می‌گردد';
+
+  @override
+  String get mtuOptimizeTitle => 'بهینه‌سازی MTU';
+
+  @override
+  String get mtuOptimizeMeasuring => 'در حال اندازه‌گیری اتصال شما';
+
+  @override
+  String get mtuOptimizeHint =>
+      'چند بسته‌ی کوچک آزمایشی به سرورهای عمومی فرستاده می‌شود. چند ثانیه طول می‌کشد.';
+
+  @override
+  String get mtuOptimizeLink => 'لینک محلی';
+
+  @override
+  String get mtuOptimizePath => 'مسیر اینترنت';
+
+  @override
+  String get mtuOptimizeOverhead => 'سربار تونل';
+
+  @override
+  String get mtuOptimizeTransport => 'ترابری';
+
+  @override
+  String get mtuOptimizeResult => 'بهترین MTU';
+
+  @override
+  String get mtuOptimizeCore => 'اندازه‌ی بسته‌ی هسته';
+
+  @override
+  String get mtuOptimizeApply => 'اعمال';
+
+  @override
+  String get mtuOptimizeRetry => 'اندازه‌گیری دوباره';
+
+  @override
+  String get mtuOptimizeUnchanged =>
+      'MTU شما همین حالا هم برای این شبکه بهترین مقدار است';
+
+  @override
+  String get mtuOptimizeNarrow =>
+      'این شبکه فقط بسته‌های کوچک را رد می‌کند، پس تونل هم‌اندازه‌ی آن تنظیم شد';
+
+  @override
+  String get mtuOptimizeTight =>
+      'این مسیر حتی برای دست‌دادن MASQUE هم تنگ است. اگر تونل بالا نیامد HTTP/2 یا وایرگارد را امتحان کنید.';
+
+  @override
+  String get mtuOptimizeBusy =>
+      'اول قطع کنید تا اندازه‌گیری شبکه‌ی واقعی شما را ببیند، نه خود تونل را';
+
+  @override
+  String get mtuOptimizeFailed => 'اندازه‌گیری کامل نشد';
+
+  @override
+  String get mtuOptimizeFailedUnreachable =>
+      'هیچ پاسخی برنگشت. ممکن است شبکه UDP را بسته باشد یا اینترنت وصل نباشد.';
+
+  @override
+  String get mtuOptimizeFailedDf =>
+      'این دستگاه اجازه نداد بسته‌ها بدون تکه‌شدن فرستاده شوند، پس مسیر اینجا قابل اندازه‌گیری نیست.';
+
+  @override
+  String get mtuOptimizeFailedSocket =>
+      'برنامه نتوانست سوکتی برای اندازه‌گیری باز کند';
+
+  @override
+  String get mtuOptimizePartial =>
+      'زمان اندازه‌گیری تمام شد، پس مقدار زیر یک کف مطمئن است';
+
+  @override
+  String mtuRangeRefusal(String min, String max) {
+    return 'عددی بین $min و $max وارد کنید';
+  }
+
+  @override
+  String portRangeRefusal(String min, String max) {
+    return 'پورتی بین $min و $max وارد کنید';
+  }
+
+  @override
+  String secondsRangeRefusal(String min, String max) {
+    return 'تعداد ثانیه‌ای بین $min و $max وارد کنید';
+  }
+
+  @override
+  String get dnsRefusal => 'یک یا دو نشانی IP وارد کنید';
+
+  @override
+  String get settingsNeedReconnect => 'برای اثرگذاری دوباره وصل شوید';
+
+  @override
+  String get devNote => 'یادداشت توسعه‌دهنده را بخوانید';
+
+  @override
+  String get devNoteDesc => 'انتخاب پروتکل روی اینترنت محدود';
+
+  @override
+  String get devNoteTitle => 'یادداشت توسعه‌دهنده';
+
+  @override
+  String get devNoteIntro =>
+      'روی شبکه‌های به‌شدت فیلترشده، و بیش از همه در ایران، پروتکل MASQUE روی HTTP/3 خیلی کم دوام می‌آورد. HTTP/3 روی QUIC سوار است و QUIC یعنی UDP؛ و UDP همان چیزی است که این شبکه‌ها اول از همه محدود یا حذف می‌کنند. اگر خط شما محدود است، از اینجا شروع نکنید.';
+
+  @override
+  String get devNoteHttp2Title => 'با HTTP/2 شروع کنید';
+
+  @override
+  String get devNoteHttp2Body =>
+      'در تنظیمات، روش اتصال را روی HTTP/2 روی TCP بگذارید. این حالت مثل ترافیک معمولی وب دیده می‌شود و روی خط محدود پایدارترین انتخاب است.';
+
+  @override
+  String get devNoteWireGuardTitle => 'یا از وایرگارد استفاده کنید';
+
+  @override
+  String get devNoteWireGuardBody =>
+      'پروتکل را روی WireGuard بگذارید. حواستان به اسکنر باشد: در حالت متعادل جست‌وجو طول می‌کشد، پس کمی صبر کنید و زود نتیجه نگیرید. اگر نتیجه را سریع می‌خواهید، حالت اسکن را روی توربو بگذارید.';
+
+  @override
+  String get devNoteGoolTitle => 'Gool معمولاً خوب جواب می‌دهد';
+
+  @override
+  String get devNoteGoolBody =>
+      'از ایران، Gool تقریباً همیشه روی نشانی آلمان می‌نشیند و مشکلی پیش نمی‌آورد. گاهی دوباره روی نشانی ایران می‌افتد؛ چند بار قطع و وصل کنید، درست می‌شود.';
+
+  @override
+  String get devNoteDismiss => 'متوجه شدم';
 
   @override
   String get tunnelDeviceState => 'وضعیت دستگاه';
@@ -1084,6 +1294,14 @@ class L10nFa extends L10n {
   @override
   String get psiphonUnprovisioned =>
       'این نسخه اعتبارنامه سایفون ندارد، پس هسته سایفون نمی‌تواند وصل شود';
+
+  @override
+  String get psiphonConduitUnavailable =>
+      'این نسخه اعتبارنامه‌ی کاندوئیت ندارد، پس حالت کاندوئیت نمی‌تواند وصل شود';
+
+  @override
+  String get psiphonCountryIgnoredOnConduit =>
+      'کاندوئیت از راه همیارهای داوطلب وصل می‌شود، پس کشور را خودش انتخاب می‌کند';
 
   @override
   String get psiphonNotAvailable =>

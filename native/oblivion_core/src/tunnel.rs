@@ -71,6 +71,9 @@ pub fn helper_path() -> Option<PathBuf> {
 pub struct TunnelDevice {
     running: AtomicBool,
     worker: Mutex<Option<Worker>>,
+    interface: Mutex<Option<String>>,
+    #[cfg(target_os = "windows")]
+    index: Mutex<Option<u32>>,
 }
 
 impl TunnelDevice {
@@ -78,6 +81,19 @@ impl TunnelDevice {
         Self {
             running: AtomicBool::new(false),
             worker: Mutex::new(None),
+            interface: Mutex::new(None),
+            #[cfg(target_os = "windows")]
+            index: Mutex::new(None),
+        }
+    }
+
+    pub fn watch_interface(&self, name: &str) {
+        if let Ok(mut guard) = self.interface.lock() {
+            *guard = Some(name.to_string());
+        }
+        #[cfg(target_os = "windows")]
+        if let Ok(mut guard) = self.index.lock() {
+            *guard = None;
         }
     }
 
@@ -222,7 +238,55 @@ impl TunnelDevice {
         }
     }
 
-    #[cfg(any(not(oblivion_hev), target_os = "windows"))]
+    #[cfg(target_os = "windows")]
+    pub fn counters(&self) -> Counters {
+        use windows_sys::Win32::NetworkManagement::IpHelper::{GetIfEntry2, MIB_IF_ROW2};
+
+        if !self.is_running() {
+            return Counters::default();
+        }
+
+        let index = match self.adapter_index() {
+            Some(value) => value,
+            None => return Counters::default(),
+        };
+
+        let mut row: MIB_IF_ROW2 = unsafe { std::mem::zeroed() };
+        row.InterfaceIndex = index;
+
+        if unsafe { GetIfEntry2(&mut row) } != 0 {
+            return Counters::default();
+        }
+
+        Counters {
+            tx_packets: row.OutUcastPkts,
+            tx_bytes: row.OutOctets,
+            rx_packets: row.InUcastPkts,
+            rx_bytes: row.InOctets,
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    fn adapter_index(&self) -> Option<u32> {
+        if let Ok(guard) = self.index.lock() {
+            if let Some(value) = *guard {
+                return Some(value);
+            }
+        }
+
+        let name = self.interface.lock().ok()?.clone()?;
+        let resolved = crate::net::interface_index(&name)?
+            .trim()
+            .parse::<u32>()
+            .ok()?;
+
+        if let Ok(mut guard) = self.index.lock() {
+            *guard = Some(resolved);
+        }
+        Some(resolved)
+    }
+
+    #[cfg(all(not(oblivion_hev), not(target_os = "windows")))]
     pub fn counters(&self) -> Counters {
         Counters::default()
     }

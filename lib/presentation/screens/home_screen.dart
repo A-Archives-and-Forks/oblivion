@@ -76,6 +76,14 @@ class HomeScreen extends ConsumerWidget {
         settings.tunnelMode &&
         !status.tunnelDeviceUp;
 
+    final reason = status.message?.trim();
+    final failure =
+        status.stage == TunnelStage.failed &&
+            reason != null &&
+            reason.isNotEmpty
+        ? reason
+        : null;
+
     return CupertinoPageScaffold(
       backgroundColor: palette.canvas,
       child: SafeArea(
@@ -136,6 +144,15 @@ class HomeScreen extends ConsumerWidget {
                               : palette.labelSecondary,
                         ),
                       ),
+                      if (failure != null)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 6, 24, 0),
+                          child: Text(
+                            failure,
+                            textAlign: TextAlign.center,
+                            style: AppText.caption(palette.danger),
+                          ),
+                        ),
                       const SizedBox(height: 10),
                       SizedBox(
                         height: 44,

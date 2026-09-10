@@ -70,6 +70,10 @@ class DesktopCoreBindings {
           .lookupFunction<_VoidReturnsIntNative, _VoidReturnsIntDart>(
             'oblivion_is_privileged',
           ),
+      _supportsConduit = library
+          .lookupFunction<_VoidReturnsIntNative, _VoidReturnsIntDart>(
+            'oblivion_supports_conduit',
+          ),
       _freeString = library.lookupFunction<_FreeStringNative, _FreeStringDart>(
         'oblivion_string_free',
       );
@@ -87,6 +91,7 @@ class DesktopCoreBindings {
   final _StringGetterDart _psiphonVersion;
   final _VoidReturnsIntDart _tunnelAvailable;
   final _VoidReturnsIntDart _isPrivileged;
+  final _VoidReturnsIntDart _supportsConduit;
   final _FreeStringDart _freeString;
 
   static DesktopCoreBindings? _instance;
@@ -202,4 +207,6 @@ class DesktopCoreBindings {
   bool get tunnelDeviceAvailable => _tunnelAvailable() == 1;
 
   bool get isPrivileged => _isPrivileged() == 1;
+
+  bool get supportsConduit => _supportsConduit() == 1;
 }

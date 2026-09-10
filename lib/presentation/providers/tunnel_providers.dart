@@ -202,7 +202,10 @@ class TunnelController extends StateNotifier<TunnelStatus> {
         if (!granted) return false;
       }
 
-      state = state.copyWith(stage: TunnelStage.connecting);
+      state = state.copyWith(
+        stage: TunnelStage.connecting,
+        clearMessage: true,
+      );
       await _channel.connect(settings);
 
       unawaited(_channel.requestNotifications());
@@ -213,7 +216,10 @@ class TunnelController extends StateNotifier<TunnelStatus> {
   }
 
   Future<void> disconnect() async {
-    state = state.copyWith(stage: TunnelStage.disconnecting);
+    state = state.copyWith(
+      stage: TunnelStage.disconnecting,
+      clearMessage: true,
+    );
     await _channel.disconnect();
   }
 

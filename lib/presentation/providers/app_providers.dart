@@ -39,6 +39,12 @@ class AppPreferencesController extends StateNotifier<AppPreferences> {
     state = state.copyWith(introSeen: true);
     await _store.writeAppPreferences(state);
   }
+
+  Future<void> markDevNoteSeen() async {
+    if (state.devNoteSeen) return;
+    state = state.copyWith(devNoteSeen: true);
+    await _store.writeAppPreferences(state);
+  }
 }
 
 final appPreferencesProvider =

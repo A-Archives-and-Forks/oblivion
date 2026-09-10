@@ -80,6 +80,7 @@ object TunnelBus {
         appendToFile(line)
     }
 
+    @Synchronized
     private fun appendToFile(line: String) {
         val target = logFile ?: return
         runCatching {
@@ -98,6 +99,7 @@ object TunnelBus {
         return runCatching { target.readText() }.getOrDefault("")
     }
 
+    @Synchronized
     fun clearLogs(context: Context) {
         bindService(context)
         val target = logFile ?: return

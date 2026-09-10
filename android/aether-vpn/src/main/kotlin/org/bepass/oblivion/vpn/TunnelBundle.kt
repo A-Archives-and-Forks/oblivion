@@ -17,6 +17,7 @@ object TunnelBundle {
         putString("obfuscation", config.obfuscation)
         putString("noizeProfile", config.noizeProfile)
         putInt("tunnelMtu", config.tunnelMtu)
+        putInt("coreMtu", config.coreMtu)
         putString("ipVersion", config.ipVersion)
         putString("logLevel", config.logLevel)
         putString("perfProfile", config.perfProfile)
@@ -56,6 +57,7 @@ object TunnelBundle {
         obfuscation = bundle.getString("obfuscation", "balanced"),
         noizeProfile = bundle.getString("noizeProfile", "balanced"),
         tunnelMtu = bundle.getInt("tunnelMtu", TunnelConfig.TUN_MTU),
+        coreMtu = bundle.getInt("coreMtu", 0),
         ipVersion = bundle.getString("ipVersion", "v4"),
         logLevel = bundle.getString("logLevel", "info"),
         perfProfile = bundle.getString("perfProfile", ""),

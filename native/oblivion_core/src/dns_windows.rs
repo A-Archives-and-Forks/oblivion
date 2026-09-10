@@ -12,7 +12,9 @@ impl DnsOverride {
     }
 
     pub fn apply(&mut self, _servers: &[String]) -> Result<String, String> {
-        Err("the tunnel adapter carries the resolver on windows".to_string())
+        Err("windows keeps the system resolver on the physical adapter, so a DNS \
+             server that sits on your own network will not enter the tunnel"
+            .to_string())
     }
 
     pub fn restore(&mut self) {

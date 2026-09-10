@@ -841,6 +841,36 @@ abstract class L10n {
   /// **'Selected apps skip the tunnel'**
   String get splitTunnelBlacklistDesc;
 
+  /// No description provided for @splitTunnelWhitelist.
+  ///
+  /// In en, this message translates to:
+  /// **'Only selected'**
+  String get splitTunnelWhitelist;
+
+  /// No description provided for @splitTunnelWhitelistDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the apps you pick go through the tunnel, everything else goes out directly'**
+  String get splitTunnelWhitelistDesc;
+
+  /// No description provided for @splitAllowCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} apps go through the tunnel'**
+  String splitAllowCount(String count);
+
+  /// No description provided for @splitAllowEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick at least one app, or nothing will go through the tunnel'**
+  String get splitAllowEmpty;
+
+  /// No description provided for @splitTunnelPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Which apps'**
+  String get splitTunnelPick;
+
   /// No description provided for @showSystemApps.
   ///
   /// In en, this message translates to:
@@ -936,6 +966,102 @@ abstract class L10n {
   /// In en, this message translates to:
   /// **'High'**
   String get perfHigh;
+
+  /// No description provided for @obfuscationOffDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'No reshaping, the fastest handshake'**
+  String get obfuscationOffDesc;
+
+  /// No description provided for @obfuscationLightDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'A light touch, for networks that barely look'**
+  String get obfuscationLightDesc;
+
+  /// No description provided for @obfuscationBalancedDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'The usual choice, works on most networks'**
+  String get obfuscationBalancedDesc;
+
+  /// No description provided for @obfuscationAggressiveDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Heaviest reshaping, for networks that fingerprint hard'**
+  String get obfuscationAggressiveDesc;
+
+  /// No description provided for @ipV4Desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Reach gateways over IPv4 only'**
+  String get ipV4Desc;
+
+  /// No description provided for @ipV6Desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Reach gateways over IPv6 only'**
+  String get ipV6Desc;
+
+  /// No description provided for @ipDualDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Try both, keep whichever answers'**
+  String get ipDualDesc;
+
+  /// No description provided for @logLevelErrorDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Only what went wrong'**
+  String get logLevelErrorDesc;
+
+  /// No description provided for @logLevelWarnDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Errors and warnings'**
+  String get logLevelWarnDesc;
+
+  /// No description provided for @logLevelInfoDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'The usual choice, one line per step'**
+  String get logLevelInfoDesc;
+
+  /// No description provided for @logLevelDebugDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything the core does, for chasing a problem'**
+  String get logLevelDebugDesc;
+
+  /// No description provided for @logLevelTraceDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Every packet decision, very noisy'**
+  String get logLevelTraceDesc;
+
+  /// No description provided for @perfAutoDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Match the device the app is running on'**
+  String get perfAutoDesc;
+
+  /// No description provided for @perfLowDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Smallest buffers, easiest on an old phone'**
+  String get perfLowDesc;
+
+  /// No description provided for @perfMediumDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'A middle ground for everyday hardware'**
+  String get perfMediumDesc;
+
+  /// No description provided for @perfHighDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Largest buffers, fastest on a strong device'**
+  String get perfHighDesc;
 
   /// No description provided for @quickReconnect.
   ///
@@ -1384,8 +1510,242 @@ abstract class L10n {
   /// No description provided for @tunnelMtuDesc.
   ///
   /// In en, this message translates to:
-  /// **'Packet size. Lower it if the connection feels slow'**
+  /// **'Largest packet the tunnel carries whole. Between 1280 and 9000'**
   String get tunnelMtuDesc;
+
+  /// No description provided for @tunnelMtuMeasured.
+  ///
+  /// In en, this message translates to:
+  /// **'Measured path {path} bytes'**
+  String tunnelMtuMeasured(String path);
+
+  /// No description provided for @mtuOptimize.
+  ///
+  /// In en, this message translates to:
+  /// **'Find the best MTU'**
+  String get mtuOptimize;
+
+  /// No description provided for @mtuOptimizeDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Measures your real connection and keeps the largest packet that survives it'**
+  String get mtuOptimizeDesc;
+
+  /// No description provided for @mtuOptimizeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'MTU optimizer'**
+  String get mtuOptimizeTitle;
+
+  /// No description provided for @mtuOptimizeMeasuring.
+  ///
+  /// In en, this message translates to:
+  /// **'Measuring your connection'**
+  String get mtuOptimizeMeasuring;
+
+  /// No description provided for @mtuOptimizeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A handful of tiny probes go out to public servers. This takes a few seconds.'**
+  String get mtuOptimizeHint;
+
+  /// No description provided for @mtuOptimizeLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Local link'**
+  String get mtuOptimizeLink;
+
+  /// No description provided for @mtuOptimizePath.
+  ///
+  /// In en, this message translates to:
+  /// **'Internet path'**
+  String get mtuOptimizePath;
+
+  /// No description provided for @mtuOptimizeOverhead.
+  ///
+  /// In en, this message translates to:
+  /// **'Tunnel overhead'**
+  String get mtuOptimizeOverhead;
+
+  /// No description provided for @mtuOptimizeTransport.
+  ///
+  /// In en, this message translates to:
+  /// **'Transport'**
+  String get mtuOptimizeTransport;
+
+  /// No description provided for @mtuOptimizeResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Best MTU'**
+  String get mtuOptimizeResult;
+
+  /// No description provided for @mtuOptimizeCore.
+  ///
+  /// In en, this message translates to:
+  /// **'Core packet size'**
+  String get mtuOptimizeCore;
+
+  /// No description provided for @mtuOptimizeApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get mtuOptimizeApply;
+
+  /// No description provided for @mtuOptimizeRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Measure again'**
+  String get mtuOptimizeRetry;
+
+  /// No description provided for @mtuOptimizeUnchanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Your MTU is already the best value for this network'**
+  String get mtuOptimizeUnchanged;
+
+  /// No description provided for @mtuOptimizeNarrow.
+  ///
+  /// In en, this message translates to:
+  /// **'This network only carries small packets, so the tunnel is set to match it'**
+  String get mtuOptimizeNarrow;
+
+  /// No description provided for @mtuOptimizeTight.
+  ///
+  /// In en, this message translates to:
+  /// **'The path is too narrow even for the MASQUE handshake. Try HTTP/2 or WireGuard if the tunnel will not come up.'**
+  String get mtuOptimizeTight;
+
+  /// No description provided for @mtuOptimizeBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect first, so the measurement sees your real network instead of the tunnel'**
+  String get mtuOptimizeBusy;
+
+  /// No description provided for @mtuOptimizeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The measurement did not finish'**
+  String get mtuOptimizeFailed;
+
+  /// No description provided for @mtuOptimizeFailedUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'No probe came back. The network may be blocking UDP, or you are offline.'**
+  String get mtuOptimizeFailedUnreachable;
+
+  /// No description provided for @mtuOptimizeFailedDf.
+  ///
+  /// In en, this message translates to:
+  /// **'This device would not send unfragmented probes, so the path cannot be measured here.'**
+  String get mtuOptimizeFailedDf;
+
+  /// No description provided for @mtuOptimizeFailedSocket.
+  ///
+  /// In en, this message translates to:
+  /// **'The app could not open a socket for the measurement'**
+  String get mtuOptimizeFailedSocket;
+
+  /// No description provided for @mtuOptimizePartial.
+  ///
+  /// In en, this message translates to:
+  /// **'The measurement ran out of time, so the value below is a safe lower bound'**
+  String get mtuOptimizePartial;
+
+  /// No description provided for @mtuRangeRefusal.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a number between {min} and {max}'**
+  String mtuRangeRefusal(String min, String max);
+
+  /// No description provided for @portRangeRefusal.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a port between {min} and {max}'**
+  String portRangeRefusal(String min, String max);
+
+  /// No description provided for @secondsRangeRefusal.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a number of seconds between {min} and {max}'**
+  String secondsRangeRefusal(String min, String max);
+
+  /// No description provided for @dnsRefusal.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter one or two IP addresses'**
+  String get dnsRefusal;
+
+  /// No description provided for @settingsNeedReconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect for this to take effect'**
+  String get settingsNeedReconnect;
+
+  /// No description provided for @devNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Read the developer note'**
+  String get devNote;
+
+  /// No description provided for @devNoteDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'How to pick a protocol on a restricted network'**
+  String get devNoteDesc;
+
+  /// No description provided for @devNoteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Note from the developer'**
+  String get devNoteTitle;
+
+  /// No description provided for @devNoteIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'On heavily filtered networks, and in Iran above all, MASQUE over HTTP/3 rarely stays up. HTTP/3 rides on QUIC, and QUIC is UDP, which is the first thing those networks throttle or drop. If your line is restricted, do not start there.'**
+  String get devNoteIntro;
+
+  /// No description provided for @devNoteHttp2Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Start with HTTP/2'**
+  String get devNoteHttp2Title;
+
+  /// No description provided for @devNoteHttp2Body.
+  ///
+  /// In en, this message translates to:
+  /// **'In Settings, set Connection type to HTTP/2 over TCP. It looks like ordinary web traffic, and on a restricted line it is by far the steadiest choice.'**
+  String get devNoteHttp2Body;
+
+  /// No description provided for @devNoteWireGuardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Or use WireGuard'**
+  String get devNoteWireGuardTitle;
+
+  /// No description provided for @devNoteWireGuardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Protocol to WireGuard. Mind the scanner: on Balanced the search takes a while, so give it time before you decide it failed. If you want a result quickly, set Scan mode to Turbo.'**
+  String get devNoteWireGuardBody;
+
+  /// No description provided for @devNoteGoolTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Gool usually works well'**
+  String get devNoteGoolTitle;
+
+  /// No description provided for @devNoteGoolBody.
+  ///
+  /// In en, this message translates to:
+  /// **'From Iran, Gool almost always comes out on a German address and gives no trouble. Once in a while it lands back on an Iranian address. Disconnect and connect again a couple of times and it clears up.'**
+  String get devNoteGoolBody;
+
+  /// No description provided for @devNoteDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get devNoteDismiss;
 
   /// No description provided for @tunnelDeviceState.
   ///
@@ -2094,6 +2454,18 @@ abstract class L10n {
   /// In en, this message translates to:
   /// **'This build carries no Psiphon credentials, so the Psiphon core cannot connect'**
   String get psiphonUnprovisioned;
+
+  /// No description provided for @psiphonConduitUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This build embeds no conduit credentials, so conduit mode cannot connect'**
+  String get psiphonConduitUnavailable;
+
+  /// No description provided for @psiphonCountryIgnoredOnConduit.
+  ///
+  /// In en, this message translates to:
+  /// **'Conduit reaches the network through volunteer peers, so the country is chosen for you'**
+  String get psiphonCountryIgnoredOnConduit;
 
   /// No description provided for @psiphonNotAvailable.
   ///

@@ -92,6 +92,26 @@ pub fn invoking_uid(requested: Option<u32>) -> Option<u32> {
     None
 }
 
+#[cfg(unix)]
+fn bypass_account(settings: &TunnelSettings) -> Option<u32> {
+    invoking_uid(settings.bypass_uid)
+}
+
+#[cfg(not(unix))]
+fn bypass_account(_settings: &TunnelSettings) -> Option<u32> {
+    Some(0)
+}
+
+#[cfg(unix)]
+fn announce_bypass(uid: u32) {
+    println!("[+] traffic from uid {uid} stays outside the tunnel");
+}
+
+#[cfg(not(unix))]
+fn announce_bypass(_uid: u32) {
+    println!("[+] the edge host route keeps the engine outside the tunnel");
+}
+
 pub fn run(root: &str) -> i32 {
     let paths = Paths::new(root);
 
@@ -117,6 +137,7 @@ pub fn run(root: &str) -> i32 {
     let _ = fs::write(&log_path, b"");
 
     let device = TunnelDevice::new();
+    device.watch_interface(&settings.tunnel_interface);
     if let Err(error) = device.start(settings.hev_config(log_path.to_str())) {
         return fail(&paths, &format!("the tunnel device did not start: {error}"));
     }
@@ -129,7 +150,7 @@ pub fn run(root: &str) -> i32 {
         );
     }
 
-    let bypass_uid = match invoking_uid(settings.bypass_uid) {
+    let bypass_uid = match bypass_account(&settings) {
         Some(uid) => uid,
         None => {
             device.stop();
@@ -140,7 +161,7 @@ pub fn run(root: &str) -> i32 {
             );
         }
     };
-    println!("[+] traffic from uid {bypass_uid} stays outside the tunnel");
+    announce_bypass(bypass_uid);
 
     let dual = settings.dual_stack();
     let edge = crate::settings::edge_ip(&settings.edge_endpoint);

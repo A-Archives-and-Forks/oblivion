@@ -5,25 +5,59 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../data/models/tunnel_settings.dart';
+import '../../data/services/app_icon_cache.dart';
 import '../../data/services/tunnel_channel.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../providers/app_providers.dart';
 import '../providers/tunnel_providers.dart';
+import '../widgets/pickers.dart';
 import '../widgets/screen_header.dart';
 import '../widgets/settings_list.dart';
 
+String splitModeTitle(L10n l10n, SplitTunnelMode value) => switch (value) {
+  SplitTunnelMode.disabled => l10n.splitTunnelDisabled,
+  SplitTunnelMode.bypassSelected => l10n.splitTunnelBlacklist,
+  SplitTunnelMode.onlySelected => l10n.splitTunnelWhitelist,
+};
+
+String splitModeDesc(L10n l10n, SplitTunnelMode value) => switch (value) {
+  SplitTunnelMode.disabled => l10n.splitTunnelDisabledDesc,
+  SplitTunnelMode.bypassSelected => l10n.splitTunnelBlacklistDesc,
+  SplitTunnelMode.onlySelected => l10n.splitTunnelWhitelistDesc,
+};
+
 final _showSystemAppsProvider = StateProvider<bool>((ref) => false);
 
-final _installedAppsProvider = FutureProvider<List<InstalledApp>>((ref) async {
+final _appIconCacheProvider = Provider.autoDispose<AppIconCache>((ref) {
+  return AppIconCache(ref.watch(tunnelChannelProvider));
+});
+
+class _AppEntry {
+  const _AppEntry(this.app, this.searchKey);
+
+  final InstalledApp app;
+  final String searchKey;
+}
+
+final _installedAppsProvider = FutureProvider<List<_AppEntry>>((ref) async {
   final includeSystem = ref.watch(_showSystemAppsProvider);
+
   try {
     final apps = await ref
         .watch(tunnelChannelProvider)
         .installedApps(includeSystem: includeSystem);
-    apps.sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
-    return apps;
+
+    final entries = <_AppEntry>[
+      for (final app in apps)
+        _AppEntry(
+          app,
+          '${app.label.toLowerCase()} ${app.packageName.toLowerCase()}',
+        ),
+    ];
+    entries.sort((a, b) => a.searchKey.compareTo(b.searchKey));
+    return entries;
   } catch (_) {
-    return const <InstalledApp>[];
+    return const <_AppEntry>[];
   }
 });
 
@@ -35,19 +69,38 @@ class SplitTunnelScreen extends ConsumerStatefulWidget {
 }
 
 class _SplitTunnelScreenState extends ConsumerState<SplitTunnelScreen> {
-  String _query = '';
+  final ValueNotifier<String> _query = ValueNotifier<String>('');
+
+  @override
+  void initState() {
+    super.initState();
+    ref.invalidate(_installedAppsProvider);
+  }
+
+  @override
+  void dispose() {
+    _query.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = L10n.of(context);
     final palette = context.palette;
 
-    final settings = ref.watch(tunnelSettingsProvider);
+    final mode = ref.watch(
+      tunnelSettingsProvider.select((s) => s.splitTunnelMode),
+    );
+    final bypassed = ref.watch(
+      tunnelSettingsProvider.select((s) => s.bypassedApps),
+    );
     final controller = ref.read(tunnelSettingsProvider.notifier);
     final showSystem = ref.watch(_showSystemAppsProvider);
     final apps = ref.watch(_installedAppsProvider);
+    final icons = ref.watch(_appIconCacheProvider);
 
-    final enabled = settings.splitTunnelMode == SplitTunnelMode.bypassSelected;
+    final enabled = mode.picksApps;
+    final starved = mode == SplitTunnelMode.onlySelected && bypassed.isEmpty;
 
     return CupertinoPageScaffold(
       backgroundColor: palette.canvas,
@@ -62,23 +115,39 @@ class _SplitTunnelScreenState extends ConsumerState<SplitTunnelScreen> {
                 SettingsGroup(
                   children: <Widget>[
                     SettingsRow(
-                      title: l10n.splitTunnelBlacklist,
-                      subtitle: enabled
-                          ? l10n.splitBypassCount(
-                              '${settings.bypassedApps.length}',
+                      title: l10n.splitTunnel,
+                      subtitle: splitModeDesc(l10n, mode),
+                      value: splitModeTitle(l10n, mode),
+                      onTap: () => showChoiceSheet<SplitTunnelMode>(
+                        context: context,
+                        title: l10n.splitTunnel,
+                        selected: mode,
+                        options: SplitTunnelMode.values
+                            .map(
+                              (value) => PickerOption<SplitTunnelMode>(
+                                value: value,
+                                title: splitModeTitle(l10n, value),
+                                subtitle: splitModeDesc(l10n, value),
+                              ),
                             )
-                          : l10n.splitTunnelDisabledDesc,
-                      trailing: AppSwitch(
-                        value: enabled,
-                        onChanged: (value) => controller.update(
-                          (s) => s.copyWith(
-                            splitTunnelMode: value
-                                ? SplitTunnelMode.bypassSelected
-                                : SplitTunnelMode.disabled,
-                          ),
+                            .toList(),
+                        onSelected: (value) => controller.update(
+                          (s) => s.copyWith(splitTunnelMode: value),
                         ),
                       ),
                     ),
+                    if (enabled)
+                      SettingsRow(
+                        title: l10n.splitTunnelPick,
+                        subtitle: starved
+                            ? l10n.splitAllowEmpty
+                            : (mode == SplitTunnelMode.onlySelected
+                                  ? l10n.splitAllowCount('${bypassed.length}')
+                                  : l10n.splitBypassCount(
+                                      '${bypassed.length}',
+                                    )),
+                        destructive: starved,
+                      ),
                     SettingsRow(
                       title: l10n.showSystemApps,
                       enabled: enabled,
@@ -122,7 +191,7 @@ class _SplitTunnelScreenState extends ConsumerState<SplitTunnelScreen> {
                       border: Border.all(color: palette.separator),
                     ),
                     onChanged: (value) =>
-                        setState(() => _query = value.toLowerCase()),
+                        _query.value = value.trim().toLowerCase(),
                   ),
                 ),
                 Expanded(
@@ -136,61 +205,22 @@ class _SplitTunnelScreenState extends ConsumerState<SplitTunnelScreen> {
                         style: AppText.caption(palette.labelSecondary),
                       ),
                     ),
-                    data: (list) {
-                      final visible = _query.isEmpty
-                          ? list
-                          : list
-                                .where(
-                                  (app) =>
-                                      app.label.toLowerCase().contains(
-                                        _query,
-                                      ) ||
-                                      app.packageName.toLowerCase().contains(
-                                        _query,
-                                      ),
-                                )
-                                .toList();
-
-                      if (visible.isEmpty) {
-                        return Center(
-                          child: Text(
-                            l10n.logsFilterEmpty,
-                            style: AppText.caption(palette.labelSecondary),
-                          ),
-                        );
-                      }
-
-                      return ListView.separated(
-                        itemCount: visible.length,
-                        separatorBuilder: (_, _) => Padding(
-                          padding: const EdgeInsetsDirectional.only(start: 16),
-                          child: Container(height: 1, color: palette.separator),
-                        ),
-                        itemBuilder: (context, index) {
-                          final app = visible[index];
-                          final bypassed = settings.bypassedApps.contains(
-                            app.packageName,
-                          );
-
-                          return _AppRow(
-                            app: app,
-                            enabled: enabled,
-                            bypassed: bypassed,
-                            onChanged: (value) {
-                              final next = settings.bypassedApps.toSet();
-                              if (value) {
-                                next.add(app.packageName);
-                              } else {
-                                next.remove(app.packageName);
-                              }
-                              controller.update(
-                                (s) => s.copyWith(bypassedApps: next),
-                              );
-                            },
-                          );
-                        },
-                      );
-                    },
+                    data: (list) => ValueListenableBuilder<String>(
+                      valueListenable: _query,
+                      builder: (_, query, _) => _AppList(
+                        entries: query.isEmpty
+                            ? list
+                            : <_AppEntry>[
+                                for (final entry in list)
+                                  if (entry.searchKey.contains(query)) entry,
+                              ],
+                        bypassed: bypassed,
+                        enabled: enabled,
+                        emptyLabel: l10n.logsFilterEmpty,
+                        onToggle: controller.toggleBypassedApp,
+                        icons: icons,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -202,18 +232,65 @@ class _SplitTunnelScreenState extends ConsumerState<SplitTunnelScreen> {
   }
 }
 
+class _AppList extends StatelessWidget {
+  const _AppList({
+    required this.entries,
+    required this.bypassed,
+    required this.enabled,
+    required this.emptyLabel,
+    required this.onToggle,
+    required this.icons,
+  });
+
+  final List<_AppEntry> entries;
+  final Set<String> bypassed;
+  final bool enabled;
+  final String emptyLabel;
+  final ValueChanged<String> onToggle;
+  final AppIconCache icons;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+
+    if (entries.isEmpty) {
+      return Center(
+        child: Text(emptyLabel, style: AppText.caption(palette.labelSecondary)),
+      );
+    }
+
+    return ListView.builder(
+      primary: false,
+      itemCount: entries.length,
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      itemBuilder: (_, index) {
+        final entry = entries[index];
+        return _AppRow(
+          app: entry.app,
+          icons: icons,
+          enabled: enabled,
+          bypassed: bypassed.contains(entry.app.packageName),
+          onChanged: () => onToggle(entry.app.packageName),
+        );
+      },
+    );
+  }
+}
+
 class _AppRow extends StatelessWidget {
   const _AppRow({
     required this.app,
+    required this.icons,
     required this.enabled,
     required this.bypassed,
     required this.onChanged,
   });
 
   final InstalledApp app;
+  final AppIconCache icons;
   final bool enabled;
   final bool bypassed;
-  final ValueChanged<bool> onChanged;
+  final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -221,13 +298,19 @@ class _AppRow extends StatelessWidget {
 
     return Container(
       color: palette.card,
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 10, 16, 10),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 9, 16, 9),
+      foregroundDecoration: BoxDecoration(
+        border: BorderDirectional(
+          bottom: BorderSide(color: palette.separator, width: 1),
+        ),
+      ),
       child: Row(
         children: <Widget>[
-          _AppIcon(bytes: app.icon),
+          _AppIcon(packageName: app.packageName, icons: icons),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
@@ -238,7 +321,6 @@ class _AppRow extends StatelessWidget {
                     enabled ? palette.label : palette.labelSecondary,
                   ),
                 ),
-                const SizedBox(height: 2),
                 Text(
                   app.packageName,
                   maxLines: 1,
@@ -250,42 +332,84 @@ class _AppRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          AppSwitch(value: bypassed, onChanged: enabled ? onChanged : null),
+          AppSwitch(
+            value: bypassed,
+            onChanged: enabled ? (_) => onChanged() : null,
+          ),
         ],
       ),
     );
   }
 }
 
-class _AppIcon extends StatelessWidget {
-  const _AppIcon({required this.bytes});
+class _AppIcon extends StatefulWidget {
+  const _AppIcon({required this.packageName, required this.icons});
 
-  final Uint8List? bytes;
+  final String packageName;
+  final AppIconCache icons;
+
+  @override
+  State<_AppIcon> createState() => _AppIconState();
+}
+
+class _AppIconState extends State<_AppIcon> {
+  Uint8List? _bytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(covariant _AppIcon oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.packageName != widget.packageName) _resolve();
+  }
+
+  void _resolve() {
+    final wanted = widget.packageName;
+
+    if (widget.icons.holds(wanted)) {
+      _bytes = widget.icons.peek(wanted);
+      return;
+    }
+
+    _bytes = null;
+    widget.icons.load(wanted).then((value) {
+      if (!mounted || widget.packageName != wanted) return;
+      setState(() => _bytes = value);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final data = bytes;
+    final data = _bytes;
 
     return SizedBox(
       width: 34,
       height: 34,
       child: data == null || data.isEmpty
-          ? DecoratedBox(
-              decoration: BoxDecoration(
-                color: palette.cardPressed,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                CupertinoIcons.app,
-                size: 17,
-                color: palette.labelSecondary,
-              ),
-            )
+          ? _placeholder(palette)
           : ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.memory(data, fit: BoxFit.cover),
+              child: Image.memory(
+                data,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                filterQuality: FilterQuality.medium,
+                errorBuilder: (_, _, _) => _placeholder(palette),
+              ),
             ),
     );
   }
+
+  Widget _placeholder(AppPalette palette) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: palette.cardPressed,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Icon(CupertinoIcons.app, size: 17, color: palette.labelSecondary),
+  );
 }

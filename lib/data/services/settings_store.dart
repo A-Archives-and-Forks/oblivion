@@ -22,11 +22,13 @@ class AppPreferences {
     this.themeMode = ThemeMode.dark,
     this.localeCode = fallbackLocaleCode,
     this.introSeen = false,
+    this.devNoteSeen = false,
   });
 
   final ThemeMode themeMode;
   final String localeCode;
   final bool introSeen;
+  final bool devNoteSeen;
 
   Locale get locale => Locale(localeCode);
 
@@ -34,11 +36,13 @@ class AppPreferences {
     ThemeMode? themeMode,
     String? localeCode,
     bool? introSeen,
+    bool? devNoteSeen,
   }) {
     return AppPreferences(
       themeMode: themeMode ?? this.themeMode,
       localeCode: localeCode ?? this.localeCode,
       introSeen: introSeen ?? this.introSeen,
+      devNoteSeen: devNoteSeen ?? this.devNoteSeen,
     );
   }
 }
@@ -81,6 +85,8 @@ class SettingsStore {
     'routingMode',
     'tunnelInterface',
     'tunnelMtu',
+    'coreMtu',
+    'pathMtu',
     'overrideDns',
     'dnsPrimary',
     'dnsSecondary',
@@ -107,13 +113,16 @@ class SettingsStore {
   static const _kThemeMode = 'app.themeMode';
   static const _kLocale = 'app.locale';
   static const _kIntroSeen = 'app.introSeen';
+  static const _kDevNoteSeen = 'app.devNoteSeen';
+
+  Map<String, Object>? _stored;
 
   String? _string(String key) => _prefs.getString('$_prefix$key');
 
   TunnelSettings readTunnelSettings() {
     const fallback = TunnelSettings();
 
-    return TunnelSettings(
+    final settings = TunnelSettings(
       core: CoreEngine.fromWire(_string('core')),
       psiphonCountry: _string('psiphonCountry') ?? fallback.psiphonCountry,
       psiphonMode: PsiphonMode.fromWire(_string('psiphonMode')),
@@ -150,6 +159,8 @@ class SettingsStore {
           _prefs.getString('${_prefix}tunnelInterface') ??
           fallback.tunnelInterface,
       tunnelMtu: _prefs.getInt('${_prefix}tunnelMtu') ?? fallback.tunnelMtu,
+      coreMtu: _prefs.getInt('${_prefix}coreMtu') ?? fallback.coreMtu,
+      pathMtu: _prefs.getInt('${_prefix}pathMtu') ?? fallback.pathMtu,
       overrideDns:
           _prefs.getBool('${_prefix}overrideDns') ?? fallback.overrideDns,
       dnsPrimary:
@@ -185,82 +196,105 @@ class SettingsStore {
       gatewayProxy:
           _prefs.getBool('${_prefix}gatewayProxy') ?? fallback.gatewayProxy,
     );
+
+    _stored = _snapshot(settings);
+    return settings;
+  }
+
+  Map<String, Object> _snapshot(TunnelSettings s) => <String, Object>{
+    'core': s.core.wire,
+    'psiphonCountry': s.psiphonCountry,
+    'psiphonMode': s.psiphonMode.wire,
+    'psiphonCdnIps': s.psiphonCdnIps,
+    'psiphonCdnSni': s.psiphonCdnSni,
+    'psiphonConduitPeers': s.psiphonConduitPeers.wire,
+    'psiphonRejectCensoredPeers': s.psiphonRejectCensoredPeers,
+    'protocol': s.protocol.wire,
+    'transport': s.transport.wire,
+    'scanMode': s.scanMode.wire,
+    'obfuscation': s.obfuscation.wire,
+    'ipVersion': s.ipVersion.wire,
+    'logLevel': s.logLevel.wire,
+    'perfProfile': s.perfProfile.wire,
+    'echMode': s.echMode.wire,
+    'splitTunnelMode': s.splitTunnelMode.name,
+    'bypassedApps': s.bypassedApps.toList(),
+    'endpoint': s.endpoint,
+    'wgEndpoint': s.wgEndpoint,
+    'h2Endpoint': s.h2Endpoint,
+    'wiwOuter': s.wiwOuter,
+    'wiwInner': s.wiwInner,
+    'tlsGroups': s.tlsGroups,
+    'socksPort': s.socksPort,
+    'allowLan': s.allowLan,
+    'routingMode': s.routingMode.wire,
+    'tunnelInterface': s.tunnelInterface,
+    'tunnelMtu': s.tunnelMtu,
+    'coreMtu': s.coreMtu,
+    'pathMtu': s.pathMtu,
+    'overrideDns': s.overrideDns,
+    'dnsPrimary': s.dnsPrimary,
+    'dnsSecondary': s.dnsSecondary,
+    'fragment': s.fragment,
+    'fragmentSize': s.fragmentSize,
+    'fragmentDelay': s.fragmentDelay,
+    'quickReconnect': s.quickReconnect,
+    'fastFirstConnect': s.fastFirstConnect,
+    'dataCheck': s.dataCheck,
+    'validateSeconds': s.validateSeconds,
+    'reconnectSeconds': s.reconnectSeconds,
+    'wgKeepalive': s.wgKeepalive,
+    'wgProfileRetry': s.wgProfileRetry,
+    'routeBlock': s.routeBlock,
+    'routeDirect': s.routeDirect,
+    'team': s.team,
+    'accessToken': s.accessToken,
+    'accessId': s.accessId,
+    'accessSecret': s.accessSecret,
+    'accessEmail': s.accessEmail,
+    'gatewayProxy': s.gatewayProxy,
+  };
+
+  static bool _unchanged(Object? stored, Object next) {
+    if (stored is List<String> && next is List<String>) {
+      if (stored.length != next.length) return false;
+      for (var i = 0; i < stored.length; i++) {
+        if (stored[i] != next[i]) return false;
+      }
+      return true;
+    }
+    return stored == next;
+  }
+
+  Future<void> _put(String key, Object value) async {
+    final name = '$_prefix$key';
+    switch (value) {
+      case final String text:
+        await _prefs.setString(name, text);
+      case final int number:
+        await _prefs.setInt(name, number);
+      case final bool flag:
+        await _prefs.setBool(name, flag);
+      case final List<String> items:
+        await _prefs.setStringList(name, items);
+    }
   }
 
   Future<void> writeTunnelSettings(TunnelSettings settings) async {
-    await _prefs.setString('${_prefix}core', settings.core.wire);
-    await _prefs.setString('${_prefix}psiphonCountry', settings.psiphonCountry);
-    await _prefs.setString('${_prefix}psiphonMode', settings.psiphonMode.wire);
-    await _prefs.setString('${_prefix}psiphonCdnIps', settings.psiphonCdnIps);
-    await _prefs.setString('${_prefix}psiphonCdnSni', settings.psiphonCdnSni);
-    await _prefs.setString(
-      '${_prefix}psiphonConduitPeers',
-      settings.psiphonConduitPeers.wire,
-    );
-    await _prefs.setBool(
-      '${_prefix}psiphonRejectCensoredPeers',
-      settings.psiphonRejectCensoredPeers,
-    );
-    await _prefs.setString('${_prefix}protocol', settings.protocol.wire);
-    await _prefs.setString('${_prefix}transport', settings.transport.wire);
-    await _prefs.setString('${_prefix}scanMode', settings.scanMode.wire);
-    await _prefs.setString('${_prefix}obfuscation', settings.obfuscation.wire);
-    await _prefs.setString('${_prefix}ipVersion', settings.ipVersion.wire);
-    await _prefs.setString('${_prefix}logLevel', settings.logLevel.wire);
-    await _prefs.setString('${_prefix}perfProfile', settings.perfProfile.wire);
-    await _prefs.setString('${_prefix}echMode', settings.echMode.wire);
-    await _prefs.setString(
-      '${_prefix}splitTunnelMode',
-      settings.splitTunnelMode.name,
-    );
-    await _prefs.setStringList(
-      '${_prefix}bypassedApps',
-      settings.bypassedApps.toList(),
-    );
-    await _prefs.setString('${_prefix}endpoint', settings.endpoint);
-    await _prefs.setString('${_prefix}wgEndpoint', settings.wgEndpoint);
-    await _prefs.setString('${_prefix}h2Endpoint', settings.h2Endpoint);
-    await _prefs.setString('${_prefix}wiwOuter', settings.wiwOuter);
-    await _prefs.setString('${_prefix}wiwInner', settings.wiwInner);
-    await _prefs.setString('${_prefix}tlsGroups', settings.tlsGroups);
-    await _prefs.setInt('${_prefix}socksPort', settings.socksPort);
-    await _prefs.setBool('${_prefix}allowLan', settings.allowLan);
-    await _prefs.setString('${_prefix}routingMode', settings.routingMode.wire);
-    await _prefs.setString(
-      '${_prefix}tunnelInterface',
-      settings.tunnelInterface,
-    );
-    await _prefs.setInt('${_prefix}tunnelMtu', settings.tunnelMtu);
-    await _prefs.setBool('${_prefix}overrideDns', settings.overrideDns);
-    await _prefs.setString('${_prefix}dnsPrimary', settings.dnsPrimary);
-    await _prefs.setString('${_prefix}dnsSecondary', settings.dnsSecondary);
-    await _prefs.setBool('${_prefix}fragment', settings.fragment);
-    await _prefs.setString('${_prefix}fragmentSize', settings.fragmentSize);
-    await _prefs.setString('${_prefix}fragmentDelay', settings.fragmentDelay);
-    await _prefs.setBool('${_prefix}quickReconnect', settings.quickReconnect);
-    await _prefs.setBool(
-      '${_prefix}fastFirstConnect',
-      settings.fastFirstConnect,
-    );
-    await _prefs.setBool('${_prefix}dataCheck', settings.dataCheck);
-    await _prefs.setInt('${_prefix}validateSeconds', settings.validateSeconds);
-    await _prefs.setInt(
-      '${_prefix}reconnectSeconds',
-      settings.reconnectSeconds,
-    );
-    await _prefs.setInt('${_prefix}wgKeepalive', settings.wgKeepalive);
-    await _prefs.setBool('${_prefix}wgProfileRetry', settings.wgProfileRetry);
-    await _prefs.setString('${_prefix}routeBlock', settings.routeBlock);
-    await _prefs.setString('${_prefix}routeDirect', settings.routeDirect);
-    await _prefs.setString('${_prefix}team', settings.team);
-    await _prefs.setString('${_prefix}accessToken', settings.accessToken);
-    await _prefs.setString('${_prefix}accessId', settings.accessId);
-    await _prefs.setString('${_prefix}accessSecret', settings.accessSecret);
-    await _prefs.setString('${_prefix}accessEmail', settings.accessEmail);
-    await _prefs.setBool('${_prefix}gatewayProxy', settings.gatewayProxy);
+    final next = _snapshot(settings);
+    final stored = _stored;
+    _stored = next;
+
+    for (final entry in next.entries) {
+      if (stored != null && _unchanged(stored[entry.key], entry.value)) {
+        continue;
+      }
+      await _put(entry.key, entry.value);
+    }
   }
 
   Future<void> resetTunnelSettings() async {
+    _stored = null;
     for (final key in _coreKeys) {
       await _prefs.remove('$_prefix$key');
     }
@@ -275,12 +309,14 @@ class SettingsStore {
       ),
       localeCode: _prefs.getString(_kLocale) ?? resolveDeviceLocaleCode(),
       introSeen: _prefs.getBool(_kIntroSeen) ?? false,
+      devNoteSeen: _prefs.getBool(_kDevNoteSeen) ?? false,
     );
   }
 
   Future<void> writeAppPreferences(AppPreferences prefs) async {
     await _prefs.setString(_kThemeMode, prefs.themeMode.name);
     await _prefs.setBool(_kIntroSeen, prefs.introSeen);
+    await _prefs.setBool(_kDevNoteSeen, prefs.devNoteSeen);
   }
 
   bool get hasLocaleOverride => _prefs.getString(_kLocale) != null;

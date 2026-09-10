@@ -131,6 +131,18 @@
   "splitTunnelDisabledDesc": "ترافیک همه اپ‌ها از تونل رد می‌شود",
   "splitTunnelBlacklist": "عبور موارد انتخابی",
   "splitTunnelBlacklistDesc": "اپ‌های انتخاب‌شده از تونل رد نمی‌شوند",
+  "splitTunnelWhitelist": "فقط انتخاب‌شده‌ها",
+  "splitTunnelWhitelistDesc": "فقط برنامه‌هایی که انتخاب می‌کنید از تونل رد می‌شوند، بقیه مستقیم می‌روند",
+  "splitAllowCount": "{count} برنامه از تونل رد می‌شوند",
+  "@splitAllowCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "splitAllowEmpty": "دست‌کم یک برنامه انتخاب کنید، وگرنه هیچ ترافیکی از تونل رد نمی‌شود",
+  "splitTunnelPick": "کدام برنامه‌ها",
   "showSystemApps": "نمایش اپ‌های سیستمی",
   "searchApps": "جست‌وجوی اپ",
   "fragment": "تکه‌تکه فرستادن",
@@ -147,6 +159,22 @@
   "perfLow": "کم",
   "perfMedium": "متوسط",
   "perfHigh": "زیاد",
+  "obfuscationOffDesc": "بدون تغییر شکل، سریع‌ترین دست‌دادن",
+  "obfuscationLightDesc": "دست‌کاری سبک، برای شبکه‌هایی که سخت‌گیر نیستند",
+  "obfuscationBalancedDesc": "انتخاب معمول، روی بیشتر شبکه‌ها کار می‌کند",
+  "obfuscationAggressiveDesc": "سنگین‌ترین تغییر شکل، برای شبکه‌های سخت‌گیر",
+  "ipV4Desc": "فقط از راه IPv4 به دروازه‌ها وصل شو",
+  "ipV6Desc": "فقط از راه IPv6 به دروازه‌ها وصل شو",
+  "ipDualDesc": "هر دو را امتحان کن و هرکدام جواب داد نگه دار",
+  "logLevelErrorDesc": "فقط چیزی که خراب شده",
+  "logLevelWarnDesc": "خطاها و هشدارها",
+  "logLevelInfoDesc": "انتخاب معمول، هر مرحله یک خط",
+  "logLevelDebugDesc": "هرچه هسته انجام می‌دهد، برای ردیابی یک مشکل",
+  "logLevelTraceDesc": "تصمیم تک‌تک بسته‌ها، بسیار پرحرف",
+  "perfAutoDesc": "متناسب با دستگاهی که برنامه روی آن اجرا می‌شود",
+  "perfLowDesc": "کوچک‌ترین بافرها، سبک برای گوشی قدیمی",
+  "perfMediumDesc": "حد وسط برای سخت‌افزار معمولی",
+  "perfHighDesc": "بزرگ‌ترین بافرها، سریع‌ترین روی دستگاه قوی",
   "quickReconnect": "اتصال سریع مجدد",
   "quickReconnectDesc": "قبل از اسکن کامل، آخرین گیت‌وی سالم را امتحان کن",
   "resetSettings": "بازنشانی تنظیمات",
@@ -221,7 +249,83 @@
   "tunnelInterface": "نام اینترفیس",
   "tunnelInterfaceDesc": "نام کارت شبکه مجازی",
   "tunnelMtu": "MTU",
-  "tunnelMtuDesc": "اندازه بسته‌ها. اگر اتصال کند است کمترش کنید",
+  "tunnelMtuDesc": "بزرگ‌ترین بسته‌ای که تونل سالم رد می‌کند. بین 1280 تا 9000",
+  "tunnelMtuMeasured": "مسیر اندازه‌گیری‌شده: {path} بایت",
+  "@tunnelMtuMeasured": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "mtuOptimize": "پیدا کردن بهترین MTU",
+  "mtuOptimizeDesc": "اینترنت شما واقعاً اندازه‌گیری می‌شود و بزرگ‌ترین بسته‌ای که سالم رد شود انتخاب می‌گردد",
+  "mtuOptimizeTitle": "بهینه‌سازی MTU",
+  "mtuOptimizeMeasuring": "در حال اندازه‌گیری اتصال شما",
+  "mtuOptimizeHint": "چند بسته‌ی کوچک آزمایشی به سرورهای عمومی فرستاده می‌شود. چند ثانیه طول می‌کشد.",
+  "mtuOptimizeLink": "لینک محلی",
+  "mtuOptimizePath": "مسیر اینترنت",
+  "mtuOptimizeOverhead": "سربار تونل",
+  "mtuOptimizeTransport": "ترابری",
+  "mtuOptimizeResult": "بهترین MTU",
+  "mtuOptimizeCore": "اندازه‌ی بسته‌ی هسته",
+  "mtuOptimizeApply": "اعمال",
+  "mtuOptimizeRetry": "اندازه‌گیری دوباره",
+  "mtuOptimizeUnchanged": "MTU شما همین حالا هم برای این شبکه بهترین مقدار است",
+  "mtuOptimizeNarrow": "این شبکه فقط بسته‌های کوچک را رد می‌کند، پس تونل هم‌اندازه‌ی آن تنظیم شد",
+  "mtuOptimizeTight": "این مسیر حتی برای دست‌دادن MASQUE هم تنگ است. اگر تونل بالا نیامد HTTP/2 یا وایرگارد را امتحان کنید.",
+  "mtuOptimizeBusy": "اول قطع کنید تا اندازه‌گیری شبکه‌ی واقعی شما را ببیند، نه خود تونل را",
+  "mtuOptimizeFailed": "اندازه‌گیری کامل نشد",
+  "mtuOptimizeFailedUnreachable": "هیچ پاسخی برنگشت. ممکن است شبکه UDP را بسته باشد یا اینترنت وصل نباشد.",
+  "mtuOptimizeFailedDf": "این دستگاه اجازه نداد بسته‌ها بدون تکه‌شدن فرستاده شوند، پس مسیر اینجا قابل اندازه‌گیری نیست.",
+  "mtuOptimizeFailedSocket": "برنامه نتوانست سوکتی برای اندازه‌گیری باز کند",
+  "mtuOptimizePartial": "زمان اندازه‌گیری تمام شد، پس مقدار زیر یک کف مطمئن است",
+  "mtuRangeRefusal": "عددی بین {min} و {max} وارد کنید",
+  "@mtuRangeRefusal": {
+    "placeholders": {
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "portRangeRefusal": "پورتی بین {min} و {max} وارد کنید",
+  "@portRangeRefusal": {
+    "placeholders": {
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "secondsRangeRefusal": "تعداد ثانیه‌ای بین {min} و {max} وارد کنید",
+  "@secondsRangeRefusal": {
+    "placeholders": {
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "dnsRefusal": "یک یا دو نشانی IP وارد کنید",
+  "settingsNeedReconnect": "برای اثرگذاری دوباره وصل شوید",
+  "devNote": "یادداشت توسعه‌دهنده را بخوانید",
+  "devNoteDesc": "انتخاب پروتکل روی اینترنت محدود",
+  "devNoteTitle": "یادداشت توسعه‌دهنده",
+  "devNoteIntro": "روی شبکه‌های به‌شدت فیلترشده، و بیش از همه در ایران، پروتکل MASQUE روی HTTP/3 خیلی کم دوام می‌آورد. HTTP/3 روی QUIC سوار است و QUIC یعنی UDP؛ و UDP همان چیزی است که این شبکه‌ها اول از همه محدود یا حذف می‌کنند. اگر خط شما محدود است، از اینجا شروع نکنید.",
+  "devNoteHttp2Title": "با HTTP/2 شروع کنید",
+  "devNoteHttp2Body": "در تنظیمات، روش اتصال را روی HTTP/2 روی TCP بگذارید. این حالت مثل ترافیک معمولی وب دیده می‌شود و روی خط محدود پایدارترین انتخاب است.",
+  "devNoteWireGuardTitle": "یا از وایرگارد استفاده کنید",
+  "devNoteWireGuardBody": "پروتکل را روی WireGuard بگذارید. حواستان به اسکنر باشد: در حالت متعادل جست‌وجو طول می‌کشد، پس کمی صبر کنید و زود نتیجه نگیرید. اگر نتیجه را سریع می‌خواهید، حالت اسکن را روی توربو بگذارید.",
+  "devNoteGoolTitle": "Gool معمولاً خوب جواب می‌دهد",
+  "devNoteGoolBody": "از ایران، Gool تقریباً همیشه روی نشانی آلمان می‌نشیند و مشکلی پیش نمی‌آورد. گاهی دوباره روی نشانی ایران می‌افتد؛ چند بار قطع و وصل کنید، درست می‌شود.",
+  "devNoteDismiss": "متوجه شدم",
   "tunnelDeviceState": "وضعیت دستگاه",
   "tunnelDeviceEmbedded": "تعبیه شده",
   "tunnelDeviceMissing": "تعبیه نشده",
@@ -371,6 +475,8 @@
   "psiphonRejectCensoredPeers": "رد کردن مناطق سانسورشده",
   "psiphonRejectCensoredPeersDesc": "همتاهایی که در کشورهای پرسانسور میزبانی می‌شوند رد شوند",
   "psiphonUnprovisioned": "این نسخه اعتبارنامه سایفون ندارد، پس هسته سایفون نمی‌تواند وصل شود",
+  "psiphonConduitUnavailable": "این نسخه اعتبارنامه‌ی کاندوئیت ندارد، پس حالت کاندوئیت نمی‌تواند وصل شود",
+  "psiphonCountryIgnoredOnConduit": "کاندوئیت از راه همیارهای داوطلب وصل می‌شود، پس کشور را خودش انتخاب می‌کند",
   "psiphonNotAvailable": "تنظیمات سایفون فقط وقتی هسته سایفون انتخاب شده اعمال می‌شود",
   "aetherOnlySection": "این تنظیمات به هسته Aether مربوط است",
   "fastFirstConnect": "اتصال اول سریع",

@@ -199,7 +199,10 @@ enum RoutingMode {
 
 enum SplitTunnelMode {
   disabled,
-  bypassSelected;
+  bypassSelected,
+  onlySelected;
+
+  bool get picksApps => this != disabled;
 
   static SplitTunnelMode fromName(String? value) =>
       values.firstWhere((e) => e.name == value, orElse: () => disabled);
@@ -235,6 +238,8 @@ class TunnelSettings {
     this.routingMode = RoutingMode.fullTunnel,
     this.tunnelInterface = 'oblivion0',
     this.tunnelMtu = 8500,
+    this.coreMtu = 0,
+    this.pathMtu = 0,
     this.overrideDns = true,
     this.dnsPrimary = '1.1.1.1',
     this.dnsSecondary = '1.0.0.1',
@@ -289,6 +294,8 @@ class TunnelSettings {
   final RoutingMode routingMode;
   final String tunnelInterface;
   final int tunnelMtu;
+  final int coreMtu;
+  final int pathMtu;
   final bool overrideDns;
   final String dnsPrimary;
   final String dnsSecondary;
@@ -316,6 +323,11 @@ class TunnelSettings {
   final String accessEmail;
   final bool gatewayProxy;
 
+  bool get splitTunnelActive => splitTunnelMode.picksApps;
+
+  bool get splitTunnelStarved =>
+      splitTunnelMode == SplitTunnelMode.onlySelected && bypassedApps.isEmpty;
+
   bool get usesChain => core == CoreEngine.chain;
 
   bool get usesPsiphon => core == CoreEngine.psiphon || usesChain;
@@ -326,7 +338,8 @@ class TunnelSettings {
 
   int get _chainPortShift => socksPort + 11 <= 65535 ? 10 : -10;
 
-  int get aetherSocksPort => usesChain ? socksPort + _chainPortShift : socksPort;
+  int get aetherSocksPort =>
+      usesChain ? socksPort + _chainPortShift : socksPort;
 
   int get aetherHttpProxyPort => aetherSocksPort + 1;
 
@@ -437,6 +450,12 @@ class TunnelSettings {
   String get httpProxyAddress =>
       '${allowLan ? '0.0.0.0' : '127.0.0.1'}:$httpProxyPort';
 
+  int get effectiveCoreMtu {
+    if (coreMtu >= 576 && coreMtu <= 1500) return coreMtu;
+    if (tunnelMtu >= 576 && tunnelMtu <= 1500) return tunnelMtu;
+    return 0;
+  }
+
   bool get proxyOnly => routingMode != RoutingMode.fullTunnel;
 
   bool get tunnelMode => routingMode == RoutingMode.fullTunnel;
@@ -485,6 +504,8 @@ class TunnelSettings {
     RoutingMode? routingMode,
     String? tunnelInterface,
     int? tunnelMtu,
+    int? coreMtu,
+    int? pathMtu,
     bool? overrideDns,
     String? dnsPrimary,
     String? dnsSecondary,
@@ -537,6 +558,8 @@ class TunnelSettings {
       routingMode: routingMode ?? this.routingMode,
       tunnelInterface: tunnelInterface ?? this.tunnelInterface,
       tunnelMtu: tunnelMtu ?? this.tunnelMtu,
+      coreMtu: coreMtu ?? this.coreMtu,
+      pathMtu: pathMtu ?? this.pathMtu,
       overrideDns: overrideDns ?? this.overrideDns,
       dnsPrimary: dnsPrimary ?? this.dnsPrimary,
       dnsSecondary: dnsSecondary ?? this.dnsSecondary,
@@ -594,6 +617,7 @@ class TunnelSettings {
     'routingMode': routingMode.wire,
     'tunnelInterface': tunnelInterface,
     'tunnelMtu': tunnelMtu,
+    'coreMtu': effectiveCoreMtu,
     'overrideDns': overrideDns,
     'dnsPrimary': dnsPrimary.trim(),
     'dnsSecondary': dnsSecondary.trim(),

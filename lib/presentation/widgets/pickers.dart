@@ -80,6 +80,7 @@ Future<void> showTextEditorSheet({
   required ValueChanged<String> onSaved,
   String? placeholder,
   String? description,
+  String? Function(String value)? validator,
   bool digitsOnly = false,
   bool multiline = false,
   String cancelLabel = 'Cancel',
@@ -91,99 +92,130 @@ Future<void> showTextEditorSheet({
   final saved = await showCupertinoModalPopup<bool>(
     context: context,
     builder: (sheetContext) {
-      return Container(
-        decoration: BoxDecoration(
-          color: palette.canvas,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: 18,
-              right: 18,
-              top: 18,
-              bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 18,
+      String? refusal;
+
+      return StatefulBuilder(
+        builder: (_, setSheetState) {
+          void attemptSave() {
+            final complaint = validator?.call(controller.text);
+            if (complaint == null) {
+              Navigator.of(sheetContext).pop(true);
+              return;
+            }
+            setSheetState(() => refusal = complaint);
+          }
+
+          return Container(
+            decoration: BoxDecoration(
+              color: palette.canvas,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Text(title, style: AppText.title(palette.label)),
-                if (description != null) ...<Widget>[
-                  const SizedBox(height: 6),
-                  Text(
-                    description,
-                    style: AppText.caption(palette.labelSecondary),
-                  ),
-                ],
-                const SizedBox(height: 16),
-                CupertinoTextField(
-                  controller: controller,
-                  autofocus: true,
-                  placeholder: placeholder,
-                  textDirection: TextDirection.ltr,
-                  minLines: multiline ? 4 : 1,
-                  maxLines: multiline ? 8 : 1,
-                  keyboardType: digitsOnly
-                      ? TextInputType.number
-                      : (multiline
-                            ? TextInputType.multiline
-                            : TextInputType.text),
-                  inputFormatters: digitsOnly
-                      ? <TextInputFormatter>[
-                          FilteringTextInputFormatter.digitsOnly,
-                        ]
-                      : null,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 13,
-                  ),
-                  style: AppText.rowTitle(palette.label),
-                  placeholderStyle: AppText.rowTitle(palette.labelSecondary),
-                  decoration: BoxDecoration(
-                    color: palette.card,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: palette.separator),
-                  ),
-                  onSubmitted: multiline
-                      ? null
-                      : (_) => Navigator.of(sheetContext).pop(true),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 18,
+                  right: 18,
+                  top: 18,
+                  bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 18,
                 ),
-                const SizedBox(height: 16),
-                Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    Expanded(
-                      child: CupertinoButton(
-                        color: palette.cardPressed,
+                    Text(title, style: AppText.title(palette.label)),
+                    if (description != null) ...<Widget>[
+                      const SizedBox(height: 6),
+                      Text(
+                        description,
+                        style: AppText.caption(palette.labelSecondary),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    CupertinoTextField(
+                      controller: controller,
+                      autofocus: true,
+                      placeholder: placeholder,
+                      textDirection: TextDirection.ltr,
+                      minLines: multiline ? 4 : 1,
+                      maxLines: multiline ? 8 : 1,
+                      keyboardType: digitsOnly
+                          ? TextInputType.number
+                          : (multiline
+                                ? TextInputType.multiline
+                                : TextInputType.text),
+                      inputFormatters: digitsOnly
+                          ? <TextInputFormatter>[
+                              FilteringTextInputFormatter.digitsOnly,
+                            ]
+                          : null,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 13,
+                      ),
+                      style: AppText.rowTitle(palette.label),
+                      placeholderStyle: AppText.rowTitle(
+                        palette.labelSecondary,
+                      ),
+                      decoration: BoxDecoration(
+                        color: palette.card,
                         borderRadius: BorderRadius.circular(10),
-                        padding: const EdgeInsets.symmetric(vertical: 13),
-                        onPressed: () => Navigator.of(sheetContext).pop(false),
-                        child: Text(
-                          cancelLabel,
-                          style: AppText.rowTitle(palette.label),
+                        border: Border.all(
+                          color: refusal == null
+                              ? palette.separator
+                              : palette.danger,
                         ),
                       ),
+                      onChanged: (_) {
+                        if (refusal != null) {
+                          setSheetState(() => refusal = null);
+                        }
+                      },
+                      onSubmitted: multiline ? null : (_) => attemptSave(),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: CupertinoButton(
-                        color: palette.primary,
-                        borderRadius: BorderRadius.circular(10),
-                        padding: const EdgeInsets.symmetric(vertical: 13),
-                        onPressed: () => Navigator.of(sheetContext).pop(true),
-                        child: Text(
-                          saveLabel,
-                          style: AppText.rowTitle(const Color(0xFFFFFFFF)),
+                    if (refusal != null) ...<Widget>[
+                      const SizedBox(height: 8),
+                      Text(refusal!, style: AppText.caption(palette.danger)),
+                    ],
+                    const SizedBox(height: 16),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: CupertinoButton(
+                            color: palette.cardPressed,
+                            borderRadius: BorderRadius.circular(10),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            onPressed: () =>
+                                Navigator.of(sheetContext).pop(false),
+                            child: Text(
+                              cancelLabel,
+                              style: AppText.rowTitle(palette.label),
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: CupertinoButton(
+                            color: palette.primary,
+                            borderRadius: BorderRadius.circular(10),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            onPressed: attemptSave,
+                            child: Text(
+                              saveLabel,
+                              style: AppText.rowTitle(const Color(0xFFFFFFFF)),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       );
     },
   );

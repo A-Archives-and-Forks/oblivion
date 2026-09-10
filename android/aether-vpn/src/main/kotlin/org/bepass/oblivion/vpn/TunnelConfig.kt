@@ -23,6 +23,7 @@ data class TunnelConfig(
     val allowLan: Boolean,
     val proxyOnly: Boolean,
     val tunnelMtu: Int,
+    val coreMtu: Int,
     val fragment: Boolean,
     val quickReconnect: Boolean,
     val splitTunnelMode: String,
@@ -66,6 +67,8 @@ data class TunnelConfig(
 
     val bypassSelected: Boolean get() = splitTunnelMode == "bypassSelected"
 
+    val allowSelected: Boolean get() = splitTunnelMode == "onlySelected"
+
     val usesZeroTrust: Boolean get() = team.isNotBlank()
 
     val usesGool: Boolean get() = protocol == "gool"
@@ -88,7 +91,14 @@ data class TunnelConfig(
     val hasServiceToken: Boolean
         get() = accessId.isNotBlank() && accessSecret.isNotBlank()
 
-    val mtu: Int get() = tunnelMtu.coerceIn(1280, 9000)
+    val mtu: Int get() = tunnelMtu.coerceIn(TUN_MTU_MIN, TUN_MTU_MAX)
+
+    val innerMtu: Int
+        get() = when {
+            coreMtu in CORE_MTU_MIN..CORE_MTU_MAX -> coreMtu
+            tunnelMtu in CORE_MTU_MIN..CORE_MTU_MAX -> tunnelMtu
+            else -> 0
+        }
 
     fun hevYaml(logPath: String? = null): String = buildString {
         appendLine("tunnel:")
@@ -110,10 +120,9 @@ data class TunnelConfig(
     }
 
     private fun hevLogLevel(): String = when (logLevel) {
-        "trace", "debug" -> "debug"
-        "info" -> "info"
-        "warn" -> "warn"
-        else -> "error"
+        "trace" -> "debug"
+        "debug" -> "info"
+        else -> "warn"
     }
 
     companion object {
@@ -122,6 +131,10 @@ data class TunnelConfig(
         const val CORE_CHAIN = "chain"
 
         const val TUN_MTU = 8500
+        const val TUN_MTU_MIN = 1280
+        const val TUN_MTU_MAX = 9000
+        const val CORE_MTU_MIN = 576
+        const val CORE_MTU_MAX = 1500
         const val TUN_IPV4 = "198.18.0.1"
         const val TUN_IPV6 = "fc00::1"
         const val TUN_IPV4_PREFIX = 30
@@ -156,6 +169,7 @@ data class TunnelConfig(
                 allowLan = bool("allowLan"),
                 proxyOnly = bool("proxyOnly"),
                 tunnelMtu = int("tunnelMtu", TUN_MTU),
+                coreMtu = int("coreMtu", 0),
                 fragment = bool("fragment"),
                 quickReconnect = bool("quickReconnect", true),
                 splitTunnelMode = str("splitTunnelMode", "disabled"),
